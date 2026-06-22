@@ -7,4 +7,5 @@ Create a new Nika application.
 
 ```bash
 nika new <app-name>
+```
 ‍‍‍‍‍
