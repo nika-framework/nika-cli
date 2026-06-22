@@ -6,3 +6,4 @@ Generate modules, controllers, and services.
 
 ```bash
 nika generate <type> <name>
+```
