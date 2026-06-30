@@ -2,11 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"os/exec"
-	"regexp"
-	"strings"
-	"time"
 
+	"github.com/sajadweb/nika-cli/internal"
 	"github.com/spf13/cobra"
 )
 
@@ -14,53 +11,23 @@ import (
 var newCmd = &cobra.Command{
 	Use:   "new [app-name]",
 	Short: "Create a new Nika application",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) <= 0 {
-			fmt.Println("❌ Error: requires exactly one argument - the application name.")
-			return
-		}
-		appName := args[0] 
-		appName = strings.TrimSpace(appName) 
-		appName = strings.ReplaceAll(appName, " ", "-") 
-		appName = strings.ToLower(appName)
-		re := regexp.MustCompile(`[^a-z0-9\-_]`)
-		appName = re.ReplaceAllString(appName, "")
-		if appName == "" {
-			fmt.Println("❌ Error: Invalid application name")
-			return
-		} 
-		done := make(chan error, 1)
-		gitCmd := exec.Command("git", "clone", "https://github.com/sajadweb/go-module.git", "./"+appName)
-		if err := gitCmd.Start(); err != nil {
-			fmt.Println("Failed to start git:", err)
-			return
-		}
-		go func() {
-			done <- gitCmd.Wait()
-		}()
-		spinner := []rune{'|', '/', '-', '\\'}
-		i := 0
-		fmt.Print("Cloning repository ")
-	loop:
-		for {
-			select {
-			case err := <-done:
-				if err != nil {
-					fmt.Printf("\rClone failed: %v\n", err)
-					return
-				}
-				fmt.Printf("\rClone completed.          \n")
-				break loop
-			default:
-				fmt.Printf("\rCloning repository %c", spinner[i%len(spinner)])
-				i++
-				time.Sleep(120 * time.Millisecond)
-			}
+	Long: `Scaffold a new Nika project from the official template.
+
+The command validates the project name, clones the template repository,
+customizes module and import paths, and initializes a fresh git repository.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		appName := args[0]
+
+		if err := internal.RunNewProject(
+			&internal.CreateApp{Name: appName},
+			nil, // use real Runner
+			nil, // use real FileOps
+		); err != nil {
+			return fmt.Errorf("failed to create project: %w", err)
 		}
 
-		fmt.Println("📦 Project structure created successfully!")
-		fmt.Println("✅ Done! Your app is ready.")
+		return nil
 	},
 }
 
