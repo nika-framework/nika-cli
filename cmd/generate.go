@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sajadweb/nika-cli/internal"
+	"github.com/nika-framework/nika-cli/internal"
 	"github.com/spf13/cobra"
 )
 

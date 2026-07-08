@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sajadweb/nika-cli/common"
+	"github.com/nika-framework/nika-cli/common"
 )
 
 // ── Field Definition ────────────────────────────────────────────────

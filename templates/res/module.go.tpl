@@ -4,7 +4,7 @@ import (
 	"{{.ModulePath}}/src/{{.ModuleName}}/controllers"
 	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
 	"{{.ModulePath}}/src/{{.ModuleName}}/services"
-	"github.com/sajadweb/nika"
+	"github.com/nika-framework/nika"
 )
 
 type {{.TypeName}}Module struct{}

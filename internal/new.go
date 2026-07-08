@@ -3,7 +3,7 @@ package internal
 import (
 	"fmt"
 
-	"github.com/sajadweb/nika-cli/common"
+	"github.com/nika-framework/nika-cli/common"
 )
 
 // CreateApp holds the parameters needed to scaffold a new Nika project.
@@ -69,7 +69,7 @@ func RunNewProject(app *CreateApp, runner Runner, fops FileOps) error {
 	// ── Step 3: Clone ──────────────────────────────────────────────
 	common.Section("Scaffolding")
 	sp.Start(fmt.Sprintf("Cloning Nika template into %q...", appName))
-	if err := runner.GitClone("https://github.com/sajadweb/nika-app.git", "./"+appName); err != nil {
+	if err := runner.GitClone("https://github.com/nika-framework/nika-app.git", "./"+appName); err != nil {
 		sp.Fail(fmt.Sprintf("Clone failed: %v", err))
 		return fmt.Errorf("clone: %w", err)
 	}

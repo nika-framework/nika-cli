@@ -1,4 +1,4 @@
-module github.com/sajadweb/nika-cli
+module github.com/nika-framework/nika-cli
 
 go 1.26.4
 

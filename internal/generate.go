@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sajadweb/nika-cli/common"
+	"github.com/nika-framework/nika-cli/common"
 )
 
 // GenerateType represents the kind of resource to generate.

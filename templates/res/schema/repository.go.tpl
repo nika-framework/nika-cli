@@ -3,7 +3,7 @@ package schema
 import (
 	"context"
 
-	"github.com/sajadweb/nika/common/mongodb/repository"
+	"github.com/nika-framework/nika/common/mongodb/repository"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

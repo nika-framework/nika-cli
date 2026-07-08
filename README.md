@@ -5,7 +5,7 @@ Nika is a modern backend framework for Go, designed for scalability, clean archi
 
 ## Commands
 
-- [docs](./docs/README.md) - Nika CLI Documentation
+- [docs](https://nika-framework.github.io/nika/cli/overview/) - Nika CLI Documentation
 
 
 ---
@@ -13,6 +13,6 @@ Nika is a modern backend framework for Go, designed for scalability, clean archi
 ## Getting Started
 
 ```bash
-go install github.com/sajadweb/nika-cli@latest
+go install github.com/nika-framework/nika-cli@latest
 go build -o nika    
 ```

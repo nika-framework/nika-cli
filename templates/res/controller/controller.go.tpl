@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
 	"{{.ModulePath}}/src/{{.ModuleName}}/services"
-	"github.com/sajadweb/nika/common/response"
-	"github.com/sajadweb/nika/common/validator"
+	"github.com/nika-framework/nika/common/response"
+	"github.com/nika-framework/nika/common/validator"
 )
 
 type {{.TypeName}}Controller struct {

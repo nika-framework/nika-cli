@@ -5,7 +5,7 @@ import (
 
 	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
 	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
-	"github.com/sajadweb/nika/common/mongodb/repository"
+	"github.com/nika-framework/nika/common/mongodb/repository"
 )
 
 type {{.TypeName}}FindOneService struct {

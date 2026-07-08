@@ -15,5 +15,5 @@ A modern CLI tool for building applications with the Nika framework.
 ## Getting Started
 
 ```bash
-go install github.com/sajadweb/nika-cli@latest
+go install github.com/nika-framework/nika-cli@latest
 ```
