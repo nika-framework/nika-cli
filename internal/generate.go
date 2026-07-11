@@ -23,6 +23,9 @@ const (
 	// GenDTO generates only the DTO.
 	GenDTO GenerateType = "dto"
 	GenD    GenerateType = "d"
+	// GenResponse generates only the response.
+	GenResponse GenerateType = "response"
+	GenR        GenerateType = "rs"
 )
 
 // ParseGenerateType normalizes a type string to a GenerateType.
@@ -36,7 +39,9 @@ func ParseGenerateType(raw string) GenerateType {
 	case "service", "s":
 		return GenService
 	case "dto", "d":
-		return GenDTO
+		return GenDTO 
+	case "response", "rs":
+		return GenResponse
 	}
 	return ""
 }
@@ -52,6 +57,8 @@ func (t GenerateType) String() string {
 		return "service"
 	case GenDTO, GenD:
 		return "dto"
+	case GenResponse, GenR:
+		return "response"
 	}
 	return string(t)
 }

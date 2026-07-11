@@ -4,12 +4,12 @@ import (
 	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
 )
 
-type {{.TypeName}}CreateService struct {
+type {{.TypeName}}Service struct {
 	repo schema.I{{.TypeName}}Repository
 }
 
-func New{{.TypeName}}CreateService(
+func New{{.TypeName}}Service(
 	repo schema.I{{.TypeName}}Repository,
-) *{{.TypeName}}CreateService {
-	return &{{.TypeName}}CreateService{repo: repo}
+) *{{.TypeName}}Service {
+	return &{{.TypeName}}Service{repo: repo}
 }

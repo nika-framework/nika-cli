@@ -128,7 +128,7 @@ func RunNewProject(app *CreateApp, runner Runner, fops FileOps) error {
 	fmt.Println("    go mod download")
 	fmt.Println("    go mod tidy")
 	fmt.Println("    mv .env.example .env")
-	fmt.Println("    go run .")
+	fmt.Println("    nika start . --watch")
 	fmt.Println()
 
 	return nil

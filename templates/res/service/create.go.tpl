@@ -7,9 +7,9 @@ import (
 	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
 )
 
-func (s *{{.TypeName}}CreateService) Run(ctx context.Context, input *dto.Create{{.TypeName}}Dto) (*schema.{{.TypeName}}, error) {
+func (s *{{.TypeName}}Service) Create(ctx context.Context, input *dto.Create{{.TypeName}}Dto) (*schema.{{.TypeName}}, error) {
 	model := schema.New{{.TypeName}}()
-	{{- range .Fields}}
+	{{- range .Fields}} 
 	model.{{.Name}} = input.{{.Name}}
 	{{- end}}
 	if err := s.repo.Create(ctx, model); err != nil {

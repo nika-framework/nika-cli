@@ -20,6 +20,7 @@ type Field struct {
 	BsonName  string // bson tag, e.g. "first_name"
 	Type      string // Go type, e.g. "string"
 	Required  bool
+	JsonTag   string // tag for model struct (bson+json)
 	ModelTag  string // tag for model struct (bson+json)
 	CreateTag string // tag for create DTO (json+validate)
 	UpdateTag string // tag for update DTO (json+validate omitempty)
@@ -27,7 +28,7 @@ type Field struct {
 
 // TemplateData is the payload passed to all .tpl files.
 type TemplateData struct {
-	ModulePath     string  // full module path from go.mod, e.g. "github.com/sajadweb/my-app"
+	ModulePath     string  // full module path from go.mod, e.g. "github.com/nika-framework/my-app"
 	ModuleName     string  // e.g. "user"
 	TypeName       string  // e.g. "User" (exported, PascalCase)
 	CollectionName string  // e.g. "users"
@@ -50,16 +51,16 @@ var mongoTypes = []string{
 }
 
 func assets(tpl string) string {
-	 _, filename, _, ok := runtime.Caller(0)
-	 if !ok { 
-        return "templates"
-    }
-	fmt.Printf("Assets in filename %s \n",filename)
-	 dir := filepath.Dir(filename)
-	 dir =strings.ReplaceAll(dir,"/internal","/")
-	 fmt.Printf("Assets Dir in  %s \n",dir)
-	 fmt.Printf("Assets File in filepath %s \n",filepath.Join(dir, tpl))
-	 
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return "templates"
+	}
+	fmt.Printf("Assets in filename %s \n", filename)
+	dir := filepath.Dir(filename)
+	dir = strings.ReplaceAll(dir, "/internal", "/")
+	fmt.Printf("Assets Dir in  %s \n", dir)
+	fmt.Printf("Assets File in filepath %s \n", filepath.Join(dir, tpl))
+
 	return filepath.Join(dir, tpl)
 }
 
@@ -149,6 +150,7 @@ func collectFields(sp *common.Spinner) []Field {
 			Type:      typeChoice,
 			Required:  required,
 			ModelTag:  fmt.Sprintf(`bson:"%s" json:"%s"`, bsonName, bsonName),
+			JsonTag:   fmt.Sprintf(`json:"%s"`, bsonName),
 			CreateTag: fmt.Sprintf(`json:"%s" validate:"%s"`, bsonName, mongoTypeDefaultValidate(typeChoice, true)),
 			UpdateTag: fmt.Sprintf(`json:"%s,omitempty" validate:"omitempty"`, bsonName),
 		}
@@ -213,6 +215,8 @@ func RunGenerate(cfg *GenerateConfig) error {
 		return runResource(sp, modulePath, &data)
 	case GenController, GenC:
 		return runControllerOnly(sp, modulePath, &data)
+	case GenResponse, GenR:
+		return runResponseOnly(sp, modulePath, &data)
 	case GenService, GenS:
 		return runServiceOnly(sp, modulePath, &data)
 	case GenDTO, GenD:
@@ -284,8 +288,12 @@ func runResource(sp *common.Spinner, modulePath string, data *TemplateData) erro
 	if err := generateController(sp, data); err != nil {
 		return err
 	}
-
-	// Step 10: generate module
+	// Step 10: generate response
+	common.Section("Generating Response")
+	if err := generateResponse(sp, data); err != nil {
+		return err
+	}
+	// Step 11: generate module
 	common.Section("Generating Module")
 	if err := generateModule(sp, data); err != nil {
 		return err
@@ -320,15 +328,8 @@ func generateSchema(sp *common.Spinner, data *TemplateData) error {
 		{"templates/res/schema/repository.interface.go.tpl", filepath.Join(base, data.ModuleName+".repository.interface.go"), "repository interface"},
 	}
 
-	for _, t := range tpls {
-		sp.Start(fmt.Sprintf("Creating %s (%s)...", t.label, filepath.Base(t.out)))
-		if err := common.RenderToFile(assets(t.tpl), t.out, data); err != nil {
-			sp.Fail(fmt.Sprintf("Failed to create %s: %v", t.label, err))
-			return fmt.Errorf("schema %s: %w", t.label, err)
-		}
-		sp.Step(fmt.Sprintf("✔ %s created", t.label), "")
-	}
-	return nil
+	
+	return generateTpls(sp, tpls,data)
 }
 
 // ── DTO generator ───────────────────────────────────────────────────
@@ -370,9 +371,55 @@ func generateServices(sp *common.Spinner, data *TemplateData) error {
 		{"templates/res/service/create.go.tpl", filepath.Join(base, "create.go"), "create method"},
 		{"templates/res/service/findone.go.tpl", filepath.Join(base, "findone.go"), "findone method"},
 		{"templates/res/service/find.go.tpl", filepath.Join(base, "find.go"), "find method"},
+		{"templates/res/service/update.go.tpl", filepath.Join(base, "update.go"), "update method"},
 		{"templates/res/service/delete.go.tpl", filepath.Join(base, "delete.go"), "delete method"},
 	}
 
+	return generateTpls(sp, tpls, data)
+}
+
+
+
+// ── Controller generator ────────────────────────────────────────────
+
+func generateController(sp *common.Spinner, data *TemplateData) error {
+	base := filepath.Join("src", data.ModuleName, "controllers")
+	tpls := []struct {
+		tpl   string
+		out   string
+		label string
+	}{
+		{"templates/res/controller/controller.go.tpl", filepath.Join(base, data.ModuleName+".controller.go"), "controller base"},
+		{"templates/res/controller/create.go.tpl", filepath.Join(base, "create.go"), "create method"},
+		{"templates/res/controller/find-one.go.tpl", filepath.Join(base, "find-one.go"), "findone method"},
+		{"templates/res/controller/find.go.tpl", filepath.Join(base, "find.go"), "find method"},
+		{"templates/res/controller/delete.go.tpl", filepath.Join(base, "delete.go"), "delete method"},
+	} 
+	return generateTpls(sp, tpls, data)
+}
+
+
+
+// ── Module response ────────────────────────────────────────────────
+
+func generateResponse(sp *common.Spinner, data *TemplateData) error {
+	base := filepath.Join("src", data.ModuleName, "response")
+	tpls := []struct {
+		tpl   string
+		out   string
+		label string
+	}{
+		{"templates/res/response/response.go.tpl", filepath.Join(base, data.ModuleName+".response.go"), "response base"},
+		{"templates/res/response/mapper.go.tpl", filepath.Join(base, data.ModuleName+".mapper.go"), "mapper method"},
+	} 
+	return generateTpls(sp, tpls, data)
+}
+
+func generateTpls(sp *common.Spinner, tpls []struct {
+	tpl   string
+	out   string
+	label string
+}, data *TemplateData) error {
 	for _, t := range tpls {
 		sp.Start(fmt.Sprintf("Creating %s...", t.label))
 		if err := common.RenderToFile(assets(t.tpl), t.out, data); err != nil {
@@ -381,21 +428,6 @@ func generateServices(sp *common.Spinner, data *TemplateData) error {
 		}
 		sp.Step(fmt.Sprintf("✔ %s created", t.label), "")
 	}
-	return nil
-}
-
-// ── Controller generator ────────────────────────────────────────────
-
-func generateController(sp *common.Spinner, data *TemplateData) error {
-	base := filepath.Join("src", data.ModuleName, "controllers")
-	out := filepath.Join(base, data.ModuleName+".controller.go")
-
-	sp.Start("Creating controller...")
-	if err := common.RenderToFile(assets("templates/res/controller/controller.go.tpl"), out, data); err != nil {
-		sp.Fail(fmt.Sprintf("Failed to create controller: %v", err))
-		return fmt.Errorf("controller: %w", err)
-	}
-	sp.Step("✔ controller created", "")
 	return nil
 }
 
@@ -415,11 +447,14 @@ func generateModule(sp *common.Spinner, data *TemplateData) error {
 
 // ── Single-purpose generators ───────────────────────────────────────
 
-// runControllerOnly generates just the controller. It needs fields for nothing,
 // but reuses the same template.
 func runControllerOnly(sp *common.Spinner, modulePath string, data *TemplateData) error {
 	common.Section("Generating Controller")
 	return generateController(sp, data)
+}
+func runResponseOnly(sp *common.Spinner, modulePath string, data *TemplateData) error {
+	common.Section("Generating Response")
+	return generateResponse(sp, data)
 }
 
 func runServiceOnly(sp *common.Spinner, modulePath string, data *TemplateData) error {
@@ -447,11 +482,20 @@ func printTree(module string) {
 		filepath.Join(base, "dto", "findone.dto.go"),
 		filepath.Join(base, "dto", "find.dto.go"),
 		filepath.Join(base, "controllers", module+".controller.go"),
+		filepath.Join(base, "controllers", "create.go"),
+		filepath.Join(base, "controllers", "find-one.go"),
+		filepath.Join(base, "controllers", "find.go"),
+		filepath.Join(base, "controllers", "delete.go"),
+		filepath.Join(base, "controllers", "update.go"),
+		filepath.Join(base, "response", module+".response.go"),
+		filepath.Join(base, "response", module+".mapper.go"),
+
 		filepath.Join(base, "services", module+".service.go"),
 		filepath.Join(base, "services", "create.go"),
 		filepath.Join(base, "services", "findone.go"),
 		filepath.Join(base, "services", "find.go"),
 		filepath.Join(base, "services", "delete.go"),
+		filepath.Join(base, "services", "update.go"),
 	}
 	for _, f := range files {
 		fmt.Printf("    %s\n", f)

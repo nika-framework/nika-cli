@@ -8,17 +8,9 @@ import (
 	"github.com/nika-framework/nika/common/mongodb/repository"
 )
 
-type {{.TypeName}}DeleteService struct {
-	repo schema.I{{.TypeName}}Repository
-}
+ 
 
-func New{{.TypeName}}DeleteService(
-	repo schema.I{{.TypeName}}Repository,
-) *{{.TypeName}}DeleteService {
-	return &{{.TypeName}}DeleteService{repo: repo}
-}
-
-func (s *{{.TypeName}}DeleteService) Run(ctx context.Context, input *dto.FindOne{{.TypeName}}Dto) error {
+func (s *{{.TypeName}}Service) Delete(ctx context.Context, input *dto.FindOne{{.TypeName}}Dto) error {
 	id, err := repository.ParseObjectID(input.ID)
 	if err != nil {
 		return err

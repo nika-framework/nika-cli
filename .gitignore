@@ -30,4 +30,5 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
-.agents/skills/staff-go-engineer/SKILL.md
+.agents
+.DS_Store
