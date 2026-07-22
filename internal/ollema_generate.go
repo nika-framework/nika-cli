@@ -21,6 +21,10 @@ type aiFieldSpec struct {
 // RunOllemaModule asks Ollama for a resource definition, then uses Nika's
 // normal generator so generated files follow the existing templates.
 func RunOllemaModule(model, userPrompt string, output io.Writer) error {
+	return runOllemaModule(agentRuntime{Provider: "ollama", Model: model}, userPrompt, output)
+}
+
+func runOllemaModule(runtime agentRuntime, userPrompt string, output io.Writer) error {
 	instruction := `Convert the user's module request into JSON only. Do not use markdown.
 The JSON must have this exact shape:
 {"module":"lowercase_english_module_name","fields":[{"name":"snake_case_name","type":"string","required":true}]}
@@ -30,7 +34,7 @@ Translate non-English module and field names into clear English names. Include e
 User request:
 ` + userPrompt
 
-	response, err := askOllema(model, instruction, "json")
+	response, err := askAgent(runtime, instruction, "json")
 	if err != nil {
 		return err
 	}

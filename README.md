@@ -7,17 +7,18 @@ Nika is a modern backend framework for Go, designed for scalability, clean archi
 
 - [docs](./docs/README.md) - Nika CLI Documentation
 
-Send a prompt to a local Ollama model:
+Configure a local Ollama agent once per project:
 
 ```bash
-nika ollema llama3.2 "Explain dependency injection in Go"
+nika agent init ollama
+nika agent "Explain dependency injection in Go"
 ```
 
-To generate a module from a natural-language prompt, mention creating or
-building a module:
+The configured agent can generate modules and add routes:
 
 ```bash
-nika ollema kimi-k2.7-code:cloud "لطفن ماژول خبر واسم بساز و فیلد تصویر و عنوان و متن و تگ ها رو داشته باشه"
+nika agent "لطفن ماژول خبر واسم بساز و فیلد تصویر و عنوان و متن و تگ ها رو داشته باشه"
+nika agent "یک روت ایجاد دیتای ماک روی ماژول news اضافه کن"
 ```
 
 

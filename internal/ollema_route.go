@@ -35,7 +35,11 @@ type controllerInfo struct {
 
 // RunOllemaRoute finds a module controller and adds an AI-planned mock-data route.
 func RunOllemaRoute(model, userPrompt string, output io.Writer) error {
-	plan, err := planOllemaRoute(model, userPrompt, "")
+	return runOllemaRoute(agentRuntime{Provider: "ollama", Model: model}, userPrompt, output)
+}
+
+func runOllemaRoute(runtime agentRuntime, userPrompt string, output io.Writer) error {
+	plan, err := planOllemaRoute(runtime, userPrompt, "")
 	if err != nil {
 		return err
 	}
@@ -82,7 +86,7 @@ func RunOllemaRoute(model, userPrompt string, output io.Writer) error {
 	}
 
 	context := fmt.Sprintf("Module model source:\n%s\n\nSelected controller: %s\nUser request:\n%s", modelSource, selected.Type, userPrompt)
-	plan, err = planOllemaRoute(model, userPrompt, context)
+	plan, err = planOllemaRoute(runtime, userPrompt, context)
 	if err != nil {
 		return err
 	}
@@ -119,7 +123,7 @@ func RunOllemaRoute(model, userPrompt string, output io.Writer) error {
 	return err
 }
 
-func planOllemaRoute(model, userPrompt, context string) (aiRouteSpec, error) {
+func planOllemaRoute(runtime agentRuntime, userPrompt, context string) (aiRouteSpec, error) {
 	instruction := `Return JSON only for a request to add a mock-data route to an existing Go MongoDB module.
 Use this exact shape:
 {"operation":"mock_data","module":"news","route_name":"CreateMock","http_method":"POST","path":"/newss/mock","values":{"title":"Mock title"},"questions":[]}
@@ -132,7 +136,7 @@ User request:
 	if context != "" {
 		instruction += "\n\nAdditional project context:\n" + context
 	}
-	response, err := askOllema(model, instruction, "json")
+	response, err := askAgent(runtime, instruction, "json")
 	if err != nil {
 		return aiRouteSpec{}, err
 	}

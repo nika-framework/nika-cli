@@ -1,4 +1,12 @@
-# nika ollema
+# nika agent (formerly nika ollema)
+
+The standalone `nika ollema` command has been replaced by the unified
+`nika agent` command. Configure a provider and run the same workflows with:
+
+```bash
+nika agent init ollama
+nika agent "یک روت ایجاد دیتای ماک روی ماژول news اضافه کن"
+```
 
 Send a prompt to a local [Ollama](https://ollama.com) model and print the response.
 When the prompt asks for a module, Nika extracts its fields and generates a

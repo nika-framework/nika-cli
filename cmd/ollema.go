@@ -52,7 +52,3 @@ func isModulePrompt(prompt string) bool {
 	}
 	return false
 }
-
-func init() {
-	rootCmd.AddCommand(ollemaCmd)
-}
