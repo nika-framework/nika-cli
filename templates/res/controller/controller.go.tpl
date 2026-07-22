@@ -1,11 +1,8 @@
 package controllers
 
 import (
-	"github.com/gin-gonic/gin"
-	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
-	"{{.ModulePath}}/src/{{.ModuleName}}/services"
-	"github.com/nika-framework/nika/common/response"
-	"github.com/nika-framework/nika/common/validator"
+	"github.com/gin-gonic/gin" 
+	"{{.ModulePath}}/src/{{.ModuleName}}/services" 
 )
 
 type {{.TypeName}}Controller struct {

@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
 	res "{{.ModulePath}}/src/{{.ModuleName}}/response"
 
@@ -30,7 +29,7 @@ func (c *{{.TypeName}}Controller) CreateHandler(
 	if !validator.BindAndValidate(ctx, &body) {
 		return
 	}
-	user, err := c.service.Create(ctx,body)
+	item, err := c.service.Create(ctx,body)
 	if err != nil {
 		response.BadRequest(ctx, "CREATION_FAILED", err.Error())
 		return
@@ -40,7 +39,7 @@ func (c *{{.TypeName}}Controller) CreateHandler(
 		res.CreateResponse{
 			Success: true,
 			Message:   "CREATE_SUCCESS_FULL",
-			Data:    res.ToUserResponse(user),  
+			Data:    res.To{{.TypeName}}Response(item),  
 		},
 	)
 }

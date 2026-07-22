@@ -1,8 +1,6 @@
 package schema
 
 import (
-	"context"
-
 	"github.com/nika-framework/nika/common/mongodb/repository"
 	"go.mongodb.org/mongo-driver/mongo"
 )

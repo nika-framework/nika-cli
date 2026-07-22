@@ -4,13 +4,12 @@ import (
 	"context"
 
 	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
-	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
 	"github.com/nika-framework/nika/common/mongodb/repository"
 )
 
  
 
-func (s *{{.TypeName}}Service) Delete(ctx context.Context, input *dto.FindOne{{.TypeName}}Dto) error {
+func (s *{{.TypeName}}Service) Delete(ctx context.Context, input dto.FindOne{{.TypeName}}Dto) error {
 	id, err := repository.ParseObjectID(input.ID)
 	if err != nil {
 		return err

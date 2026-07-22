@@ -34,7 +34,7 @@ func (c *{{.TypeName}}Controller) UpdateHandler(ctx *gin.Context) {
 		return
 	}
 
-	{{.ModuleName}}, err := c.service.Update(ctx, &param, &body)
+	{{.ModuleName}}, err := c.service.Update(ctx, param, body)
 	if err != nil {
 		response.BadRequest(ctx, "FIND_FAILED", err.Error())
 		return

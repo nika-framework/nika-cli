@@ -7,13 +7,14 @@ import (
 	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
 )
 
-func (s *{{.TypeName}}Service) Create(ctx context.Context, input *dto.Create{{.TypeName}}Dto) (*schema.{{.TypeName}}, error) {
+func (s *{{.TypeName}}Service) Create(ctx context.Context, input dto.Create{{.TypeName}}Dto) (*schema.{{.TypeName}}, error) {
 	model := schema.New{{.TypeName}}()
 	{{- range .Fields}} 
 	model.{{.Name}} = input.{{.Name}}
 	{{- end}}
-	if err := s.repo.Create(ctx, model); err != nil {
+	item,err := s.repo.Create(ctx, model);
+	if  err != nil {
 		return nil, err
 	}
-	return model, nil
+	return item, nil
 }

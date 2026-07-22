@@ -9,6 +9,7 @@ A modern CLI tool for building applications with the Nika framework.
 
 - [new](./commands/new.md) - Create a new application
 - [generate](./commands/generate.md) - Generate modules and components
+- [ollema](./commands/ollema.md) - Send a prompt to a local Ollama model
 
 ---
 

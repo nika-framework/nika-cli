@@ -46,7 +46,7 @@ func (c *{{.TypeName}}Controller) FindOneHandler(
 		res.CreateResponse{
 			Success: true,
 			Message: "FIND_SUCCESS",
-			Data:    res.To{{.ModuleName}}Response({{.ModuleName}}),
+			Data:    res.To{{.TypeName}}Response({{.ModuleName}}),
 		},
 	)
 }

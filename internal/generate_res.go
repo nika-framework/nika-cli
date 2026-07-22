@@ -167,7 +167,8 @@ func collectFields(sp *common.Spinner) []Field {
 // GenerateConfig holds the parameters for a generate run.
 type GenerateConfig struct {
 	Type   GenerateType
-	Module string // raw module name from args
+	Module string  // raw module name from args
+	Fields []Field // optional fields for non-interactive generation
 }
 
 // RunGenerate is the top-level entry for `nika g <type> <module>`.
@@ -207,6 +208,9 @@ func RunGenerate(cfg *GenerateConfig) error {
 		TypeName:       toPascalCase(moduleName),
 		CollectionName: pluralize(moduleName),
 	}
+	if cfg.Fields != nil {
+		data.Fields = cfg.Fields
+	}
 
 	fmt.Println(data.CollectionName, cfg.Type)
 	// Step 3: dispatch by type
@@ -245,20 +249,24 @@ func isValidModule(name string) bool {
 // ── Resource generator (full: schema + dto + controller + service + module) ──
 
 func runResource(sp *common.Spinner, modulePath string, data *TemplateData) error {
-	// Step 4: choose database
-	common.Section("Database Selection")
-	dbChoice := common.SelectOption(
-		"Select database for "+data.ModuleName,
-		[]string{"MongoDB"},
-	)
-	fmt.Printf("Database: %s selected", dbChoice)
+	// AI-generated resources already have their fields and use MongoDB directly.
+	if data.Fields == nil {
+		common.Section("Database Selection")
+		dbChoice := common.SelectOption(
+			"Select database for "+data.ModuleName,
+			[]string{"MongoDB"},
+		)
+		fmt.Printf("Database: %s selected", dbChoice)
+	}
 	// sp.Start(fmt.Sprintf("Database: %s selected", dbChoice))
 	// sp.Step("Database configured", "Collecting model fields...")
 
 	// Step 5: collect fields
 	common.Section("Model Fields")
-	fields := collectFields(sp)
-	data.Fields = fields
+	if data.Fields == nil {
+		data.Fields = collectFields(sp)
+	}
+	fields := data.Fields
 	if len(fields) == 0 {
 		sp.Stop("No custom fields added — proceeding with system fields only (ID, CreatedAt, UpdatedAt)")
 	} else {
@@ -328,8 +336,7 @@ func generateSchema(sp *common.Spinner, data *TemplateData) error {
 		{"templates/res/schema/repository.interface.go.tpl", filepath.Join(base, data.ModuleName+".repository.interface.go"), "repository interface"},
 	}
 
-	
-	return generateTpls(sp, tpls,data)
+	return generateTpls(sp, tpls, data)
 }
 
 // ── DTO generator ───────────────────────────────────────────────────
@@ -378,8 +385,6 @@ func generateServices(sp *common.Spinner, data *TemplateData) error {
 	return generateTpls(sp, tpls, data)
 }
 
-
-
 // ── Controller generator ────────────────────────────────────────────
 
 func generateController(sp *common.Spinner, data *TemplateData) error {
@@ -394,11 +399,10 @@ func generateController(sp *common.Spinner, data *TemplateData) error {
 		{"templates/res/controller/find-one.go.tpl", filepath.Join(base, "find-one.go"), "findone method"},
 		{"templates/res/controller/find.go.tpl", filepath.Join(base, "find.go"), "find method"},
 		{"templates/res/controller/delete.go.tpl", filepath.Join(base, "delete.go"), "delete method"},
-	} 
+		{"templates/res/controller/update.go.tpl", filepath.Join(base, "update.go"), "update method"},
+	}
 	return generateTpls(sp, tpls, data)
 }
-
-
 
 // ── Module response ────────────────────────────────────────────────
 
@@ -411,7 +415,7 @@ func generateResponse(sp *common.Spinner, data *TemplateData) error {
 	}{
 		{"templates/res/response/response.go.tpl", filepath.Join(base, data.ModuleName+".response.go"), "response base"},
 		{"templates/res/response/mapper.go.tpl", filepath.Join(base, data.ModuleName+".mapper.go"), "mapper method"},
-	} 
+	}
 	return generateTpls(sp, tpls, data)
 }
 

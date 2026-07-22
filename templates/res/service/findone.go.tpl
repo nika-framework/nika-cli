@@ -9,7 +9,7 @@ import (
 )
 
  
-func (s *{{.TypeName}}Service) FindOne(ctx context.Context, input *dto.FindOne{{.TypeName}}Dto) (*schema.{{.TypeName}}, error) {
+func (s *{{.TypeName}}Service) FindOne(ctx context.Context, input dto.FindOne{{.TypeName}}Dto) (*schema.{{.TypeName}}, error) {
 	id, err := repository.ParseObjectID(input.ID)
 	if err != nil {
 		return nil, err
