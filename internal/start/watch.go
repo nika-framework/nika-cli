@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -23,7 +22,7 @@ func runWithWatch(config Config) error {
 	defer watcher.Close()
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, os.Interrupt)
 
 	// Compile exclude regex patterns once
 	excludeRegexes := make([]*regexp.Regexp, 0, len(config.Build.ExcludeRegex))
@@ -52,10 +51,7 @@ func runWithWatch(config Config) error {
 	// Function to completely terminate the processes
 	stopCurrentCmd := func() {
 		if currentCmd != nil && currentCmd.Process != nil {
-			err := syscall.Kill(-currentCmd.Process.Pid, syscall.SIGKILL)
-			if err != nil {
-				currentCmd.Process.Kill()
-			}
+			stopProcess(currentCmd)
 			if currentDone != nil {
 				<-currentDone
 			}
@@ -103,8 +99,7 @@ func runWithWatch(config Config) error {
 		cmd.Stderr = os.Stderr
 		cmd.Env = buildEnv(config)
 
-		// Put the process in a separate group so we can kill all its children
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		configureProcess(cmd)
 
 		if err := cmd.Start(); err != nil {
 			fmt.Printf("❌ Failed to start application: %v\n", err)

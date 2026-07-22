@@ -10,6 +10,11 @@ AI-assisted project changes.
 go install github.com/nika-framework/nika-cli@latest
 ```
 
+The CLI requires Go 1.23 or newer. The same installation command works in
+PowerShell, Command Prompt, macOS, and Linux. If Windows reports errors from
+`internal/start`, update to a release containing the Windows process-handling
+fix and run the command again.
+
 Or build the binary from this repository:
 
 ```bash
