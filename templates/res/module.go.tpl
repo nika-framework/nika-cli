@@ -22,13 +22,14 @@ func (m *{{.TypeName}}Module) Controllers() []interface{} {
 func (m *{{.TypeName}}Module) Providers() []interface{} {
 	return []interface{}{
 		schema.New{{.TypeName}}Repository,
-		services.New{{.TypeName}}CreateService,
-		services.New{{.TypeName}}FindOneService,
-		services.New{{.TypeName}}FindService,
-		services.New{{.TypeName}}DeleteService,
+		services.New{{.TypeName}}Service,
 	}
 }
 
 func (m *{{.TypeName}}Module) Imports() []nika.Module {
 	return []nika.Module{}
+}
+
+func (m *{{.TypeName}}Module) Exports() []interface{} {
+	return []interface{}{}
 }

@@ -57,6 +57,7 @@ When a user asks you to build a module with specific fields (for example, a book
 
 Important rules:
 - Include all user-requested fields with the proper data type in the database model, responses, DTOs, mapper functions, and services.
+- Before generating a module, identify its database: MongoDB, PostgreSQL, MySQL, or SQLite. MongoDB models use ` + "`bson`" + ` and ` + "`json`" + ` tags with ` + "`primitive.ObjectID`" + ` IDs; SQL models use ` + "`db`" + ` and ` + "`json`" + ` tags with ` + "`int64`" + ` IDs and ` + "`common/sqldb/repository`" + `.
 - Map database types correctly (for example string, int, float64, time.Time, bool).
 - **Multilingual support (Localization / Translation)**: When the user requests multilingual or translatable fields (for example: translate:[{lang:"fa", title:"اتوبوسرانی"},{lang:"en", title:"Bus"}]):
   - In the database model, define an array field named Translations containing items with a Lang field and the translated fields (e.g. Title).
@@ -96,7 +97,7 @@ When editing or creating Go files inside the ` + "`src`" + ` folder of a Nika pr
    - Each module's internal structure contains the sub-folders ` + "`schema`" + ` (database/repository), ` + "`dto`" + ` (input definitions), ` + "`controllers`" + ` (handlers/routes), ` + "`services`" + ` (business logic), and ` + "`response`" + ` (outputs).
 
 2. **Layer rules**:
-   - **Schema/Model**: Write custom fields with proper ` + "`bson`" + ` and ` + "`json`" + ` tags. The ID type is always ` + "`primitive.ObjectID`" + ` from the ` + "`mongo-driver`" + ` package.
+	- **Schema/Model**: Match the module database. MongoDB uses ` + "`bson`" + ` and ` + "`json`" + ` tags with ` + "`primitive.ObjectID`" + `; PostgreSQL, MySQL, and SQLite use ` + "`db`" + ` and ` + "`json`" + ` tags with ` + "`int64`" + ` IDs and the SQL repository.
    - **DTOs**: The ` + "`validator`" + ` library is supported. For example use tags like ` + "`validate:\"required,min=1\"`" + `.
    - **Controllers**: They are written using the Gin framework. Route binding is declared via a tag on the controller's function fields (for example ` + "`route:\"POST:/products\"`" + `).
    - **Services**: All core business logic, including communication with the repository, must live in the service layer.

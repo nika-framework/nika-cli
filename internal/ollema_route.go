@@ -59,10 +59,6 @@ func runOllemaRoute(runtime agentRuntime, userPrompt string, output io.Writer) e
 	if err != nil {
 		return fmt.Errorf("read %s: %w", modelPath, err)
 	}
-	if !strings.Contains(modelSource, "go.mongodb.org/mongo-driver") {
-		return fmt.Errorf("module %q does not appear to use the supported MongoDB model", plan.Module)
-	}
-
 	controllers, err := findControllers(filepath.Join(moduleDir, "controllers"))
 	if err != nil {
 		return err
@@ -124,7 +120,7 @@ func runOllemaRoute(runtime agentRuntime, userPrompt string, output io.Writer) e
 }
 
 func planOllemaRoute(runtime agentRuntime, userPrompt, context string) (aiRouteSpec, error) {
-	instruction := `Return JSON only for a request to add a mock-data route to an existing Go MongoDB module.
+	instruction := `Return JSON only for a request to add a mock-data route to an existing Go Nika module.
 Use this exact shape:
 {"operation":"mock_data","module":"news","route_name":"CreateMock","http_method":"POST","path":"/newss/mock","values":{"title":"Mock title"},"questions":[]}
 The values object must contain JSON values suitable for the model fields. Use questions only when a value cannot be reasonably inferred; each question has a field and question.

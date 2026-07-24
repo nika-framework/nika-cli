@@ -16,22 +16,28 @@ var templateFS embed.FS
 
 // Field represents a single model field collected from the user.
 type Field struct {
-	Name      string // Go field name, e.g. "FirstName"
-	BsonName  string // bson tag, e.g. "first_name"
-	Type      string // Go type, e.g. "string"
-	Required  bool
-	JsonTag   string // tag for model struct (bson+json)
-	ModelTag  string // tag for model struct (bson+json)
-	CreateTag string // tag for create DTO (json+validate)
-	UpdateTag string // tag for update DTO (json+validate omitempty)
+	Name       string // Go field name, e.g. "FirstName"
+	BsonName   string // MongoDB field name, e.g. "first_name"
+	ColumnName string // SQL column name, e.g. "first_name"
+	Type       string // Go type, e.g. "string"
+	SQLType    string // SQL column type for the generated migration
+	Required   bool
+	JsonTag    string // tag for response structs
+	ModelTag   string // tag for the persistence model
+	CreateTag  string // tag for create DTO (json+validate)
+	UpdateTag  string // tag for update DTO (json+validate omitempty)
 }
 
 // TemplateData is the payload passed to all .tpl files.
 type TemplateData struct {
-	ModulePath     string  // full module path from go.mod, e.g. "github.com/nika-framework/my-app"
-	ModuleName     string  // e.g. "user"
-	TypeName       string  // e.g. "User" (exported, PascalCase)
-	CollectionName string  // e.g. "users"
+	ModulePath     string // full module path from go.mod, e.g. "github.com/nika-framework/my-app"
+	ModuleName     string // e.g. "user"
+	TypeName       string // e.g. "User" (exported, PascalCase)
+	CollectionName string // e.g. "users"
+	TableName      string // e.g. "users"
+	Database       DatabaseType
+	SQLPrimaryKey  string
+	SQLTimestamp   string
 	Fields         []Field // user-defined fields (excluding ID/CreatedAt/UpdatedAt)
 }
 
@@ -48,6 +54,15 @@ var mongoTypes = []string{
 	"primitive.ObjectID",
 	"[]string",
 	"map[string]any",
+}
+
+var sqlTypes = []string{
+	"string",
+	"int",
+	"int64",
+	"float64",
+	"bool",
+	"time.Time",
 }
 
 func assets(tpl string) string {
@@ -87,6 +102,13 @@ func mongoTypeDefaultValidate(goType string, required bool) string {
 	}
 }
 
+func supportedFieldTypes(database DatabaseType) []string {
+	if database.IsSQL() {
+		return sqlTypes
+	}
+	return mongoTypes
+}
+
 // ── Name helpers ────────────────────────────────────────────────────
 
 // toPascalCase converts snake_case to PascalCase.
@@ -121,7 +143,7 @@ func pluralize(s string) string {
 
 // collectFields runs the interactive prompt loop to gather model fields.
 // Stops on EOF or when the user types "done".
-func collectFields(sp *common.Spinner) []Field {
+func collectFields(sp *common.Spinner, database DatabaseType) ([]Field, error) {
 	var fields []Field
 	sp.Stop("Ready to collect fields...")
 
@@ -136,39 +158,78 @@ func collectFields(sp *common.Spinner) []Field {
 		name = strings.ReplaceAll(name, " ", "_")
 
 		// Choose type
-		typeChoice := common.SelectOption("Select type for "+name, mongoTypes)
+		typeChoice := common.SelectOption("Select type for "+name, supportedFieldTypes(database))
 
 		// Required?
 		required := common.ConfirmYesNo(fmt.Sprintf("Is %q required?", name))
 
-		bsonName := name
-		pascalName := toPascalCase(name)
-
-		f := Field{
-			Name:      pascalName,
-			BsonName:  bsonName,
-			Type:      typeChoice,
-			Required:  required,
-			ModelTag:  fmt.Sprintf(`bson:"%s" json:"%s"`, bsonName, bsonName),
-			JsonTag:   fmt.Sprintf(`json:"%s"`, bsonName),
-			CreateTag: fmt.Sprintf(`json:"%s" validate:"%s"`, bsonName, mongoTypeDefaultValidate(typeChoice, true)),
-			UpdateTag: fmt.Sprintf(`json:"%s,omitempty" validate:"omitempty"`, bsonName),
+		f, err := newField(name, typeChoice, required, database)
+		if err != nil {
+			return nil, err
 		}
 
 		fields = append(fields, f)
 		fmt.Printf("  ✔ Field %q (%s, required=%v) added\n", name, typeChoice, required)
 	}
 
-	return fields
+	return fields, nil
+}
+
+func newField(name, goType string, required bool, database DatabaseType) (Field, error) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if !isValidModule(name) {
+		return Field{}, fmt.Errorf("invalid field name: %s", name)
+	}
+	if !containsString(supportedFieldTypes(database), goType) {
+		return Field{}, fmt.Errorf("type %q is not supported by %s", goType, database.DisplayName())
+	}
+
+	field := Field{
+		Name:       toPascalCase(name),
+		BsonName:   name,
+		ColumnName: name,
+		Type:       goType,
+		Required:   required,
+		JsonTag:    fmt.Sprintf(`json:"%s"`, name),
+		CreateTag:  fmt.Sprintf(`json:"%s" validate:"%s"`, name, mongoTypeDefaultValidate(goType, required)),
+		UpdateTag:  fmt.Sprintf(`json:"%s,omitempty" validate:"omitempty"`, name),
+	}
+	if database.IsSQL() {
+		field.ModelTag = fmt.Sprintf(`db:"%s" json:"%s"`, name, name)
+		field.SQLType = sqlColumnType(database, goType)
+	} else {
+		field.ModelTag = fmt.Sprintf(`bson:"%s" json:"%s"`, name, name)
+	}
+	return field, nil
+}
+
+func prepareFields(fields []Field, database DatabaseType) ([]Field, error) {
+	prepared := make([]Field, 0, len(fields))
+	for _, field := range fields {
+		name := field.ColumnName
+		if name == "" {
+			name = field.BsonName
+		}
+		if name == "" {
+			name = strings.ToLower(field.Name)
+		}
+		preparedField, err := newField(name, field.Type, field.Required, database)
+		if err != nil {
+			return nil, err
+		}
+		prepared = append(prepared, preparedField)
+	}
+	return prepared, nil
 }
 
 // ── Main entry point ────────────────────────────────────────────────
 
 // GenerateConfig holds the parameters for a generate run.
 type GenerateConfig struct {
-	Type   GenerateType
-	Module string  // raw module name from args
-	Fields []Field // optional fields for non-interactive generation
+	Type     GenerateType
+	Module   string  // raw module name from args
+	Database string  // optional database name for non-interactive generation
+	Fields   []Field // optional fields for non-interactive generation
 }
 
 // RunGenerate is the top-level entry for `nika g <type> <module>`.
@@ -202,11 +263,18 @@ func RunGenerate(cfg *GenerateConfig) error {
 	// sp.Step(fmt.Sprintf("Module name %q is valid", moduleName), "")
 
 	// Build template data
+	database := ParseDatabaseType(cfg.Database)
+	if cfg.Database != "" && database == "" {
+		return fmt.Errorf("unsupported database %q (use mongodb, postgres, mysql, or sqlite)", cfg.Database)
+	}
+
 	data := TemplateData{
 		ModulePath:     modulePath,
 		ModuleName:     moduleName,
 		TypeName:       toPascalCase(moduleName),
 		CollectionName: pluralize(moduleName),
+		TableName:      pluralize(moduleName),
+		Database:       database,
 	}
 	if cfg.Fields != nil {
 		data.Fields = cfg.Fields
@@ -249,22 +317,39 @@ func isValidModule(name string) bool {
 // ── Resource generator (full: schema + dto + controller + service + module) ──
 
 func runResource(sp *common.Spinner, modulePath string, data *TemplateData) error {
-	// AI-generated resources already have their fields and use MongoDB directly.
-	if data.Fields == nil {
-		common.Section("Database Selection")
-		dbChoice := common.SelectOption(
-			"Select database for "+data.ModuleName,
-			[]string{"MongoDB"},
-		)
-		fmt.Printf("Database: %s selected", dbChoice)
+	if data.Database == "" {
+		// Preserve the previous non-interactive AI behavior when no database is supplied.
+		if data.Fields != nil {
+			data.Database = DatabaseMongo
+		} else {
+			common.Section("Database Selection")
+			dbChoice := common.SelectOption(
+				"Select database for "+data.ModuleName,
+				databaseOptions(),
+			)
+			data.Database = ParseDatabaseType(dbChoice)
+			fmt.Printf("Database: %s selected\n", data.Database.DisplayName())
+		}
 	}
-	// sp.Start(fmt.Sprintf("Database: %s selected", dbChoice))
-	// sp.Step("Database configured", "Collecting model fields...")
+	if data.Database.IsSQL() {
+		data.SQLPrimaryKey = sqlPrimaryKeyType(data.Database)
+		data.SQLTimestamp = sqlTimestampType(data.Database)
+	}
 
 	// Step 5: collect fields
 	common.Section("Model Fields")
 	if data.Fields == nil {
-		data.Fields = collectFields(sp)
+		fields, err := collectFields(sp, data.Database)
+		if err != nil {
+			return err
+		}
+		data.Fields = fields
+	} else {
+		fields, err := prepareFields(data.Fields, data.Database)
+		if err != nil {
+			return err
+		}
+		data.Fields = fields
 	}
 	fields := data.Fields
 	if len(fields) == 0 {
@@ -306,6 +391,12 @@ func runResource(sp *common.Spinner, modulePath string, data *TemplateData) erro
 	if err := generateModule(sp, data); err != nil {
 		return err
 	}
+	if data.Database.IsSQL() {
+		common.Section("Generating Migration")
+		if err := generateMigration(sp, data); err != nil {
+			return err
+		}
+	}
 
 	// Step 11: done
 	common.Section("Done!")
@@ -313,11 +404,14 @@ func runResource(sp *common.Spinner, modulePath string, data *TemplateData) erro
 	fmt.Printf("  📦 Resource %q generated successfully!\n", data.ModuleName)
 	fmt.Println()
 	fmt.Println("  Files created:")
-	printTree(data.ModuleName)
+	printTree(data.ModuleName, data.Database)
 	fmt.Println()
 	fmt.Printf("  ⚠ Don't forget to import %sModule in your app.module.go Imports()!\n", data.TypeName)
 	fmt.Printf("     import \"%s/src/%s\"\n", modulePath, data.ModuleName)
 	fmt.Printf("     // then add: %s.New%sModule(),\n", data.ModuleName, data.TypeName)
+	if data.Database.IsSQL() {
+		fmt.Printf("  ⚠ Configure sqldb.Setup with the %s driver before loading this module.\n", data.Database.DisplayName())
+	}
 	fmt.Println()
 	return nil
 }
@@ -331,9 +425,9 @@ func generateSchema(sp *common.Spinner, data *TemplateData) error {
 		out   string
 		label string
 	}{
-		{"templates/res/schema/model.go.tpl", filepath.Join(base, data.ModuleName+".model.go"), "model"},
-		{"templates/res/schema/repository.go.tpl", filepath.Join(base, data.ModuleName+".repository.go"), "repository"},
-		{"templates/res/schema/repository.interface.go.tpl", filepath.Join(base, data.ModuleName+".repository.interface.go"), "repository interface"},
+		{resourceTemplate(data, "schema/model.go.tpl"), filepath.Join(base, data.ModuleName+".model.go"), "model"},
+		{resourceTemplate(data, "schema/repository.go.tpl"), filepath.Join(base, data.ModuleName+".repository.go"), "repository"},
+		{resourceTemplate(data, "schema/repository.interface.go.tpl"), filepath.Join(base, data.ModuleName+".repository.interface.go"), "repository interface"},
 	}
 
 	return generateTpls(sp, tpls, data)
@@ -349,8 +443,8 @@ func generateDTOs(sp *common.Spinner, data *TemplateData) error {
 		label string
 	}{
 		{"templates/res/dto/create.dto.go.tpl", filepath.Join(base, "create.dto.go"), "create DTO"},
-		{"templates/res/dto/update.dto.go.tpl", filepath.Join(base, "update.dto.go"), "update DTO"},
-		{"templates/res/dto/findone.dto.go.tpl", filepath.Join(base, "findone.dto.go"), "findone DTO"},
+		{resourceTemplate(data, "dto/update.dto.go.tpl"), filepath.Join(base, "update.dto.go"), "update DTO"},
+		{resourceTemplate(data, "dto/findone.dto.go.tpl"), filepath.Join(base, "findone.dto.go"), "findone DTO"},
 		{"templates/res/dto/find.dto.go.tpl", filepath.Join(base, "find.dto.go"), "find/list DTO"},
 	}
 
@@ -376,10 +470,10 @@ func generateServices(sp *common.Spinner, data *TemplateData) error {
 	}{
 		{"templates/res/service/service.go.tpl", filepath.Join(base, data.ModuleName+".service.go"), "service base"},
 		{"templates/res/service/create.go.tpl", filepath.Join(base, "create.go"), "create method"},
-		{"templates/res/service/findone.go.tpl", filepath.Join(base, "findone.go"), "findone method"},
-		{"templates/res/service/find.go.tpl", filepath.Join(base, "find.go"), "find method"},
-		{"templates/res/service/update.go.tpl", filepath.Join(base, "update.go"), "update method"},
-		{"templates/res/service/delete.go.tpl", filepath.Join(base, "delete.go"), "delete method"},
+		{resourceTemplate(data, "service/findone.go.tpl"), filepath.Join(base, "findone.go"), "findone method"},
+		{resourceTemplate(data, "service/find.go.tpl"), filepath.Join(base, "find.go"), "find method"},
+		{resourceTemplate(data, "service/update.go.tpl"), filepath.Join(base, "update.go"), "update method"},
+		{resourceTemplate(data, "service/delete.go.tpl"), filepath.Join(base, "delete.go"), "delete method"},
 	}
 
 	return generateTpls(sp, tpls, data)
@@ -413,8 +507,8 @@ func generateResponse(sp *common.Spinner, data *TemplateData) error {
 		out   string
 		label string
 	}{
-		{"templates/res/response/response.go.tpl", filepath.Join(base, data.ModuleName+".response.go"), "response base"},
-		{"templates/res/response/mapper.go.tpl", filepath.Join(base, data.ModuleName+".mapper.go"), "mapper method"},
+		{resourceTemplate(data, "response/response.go.tpl"), filepath.Join(base, data.ModuleName+".response.go"), "response base"},
+		{resourceTemplate(data, "response/mapper.go.tpl"), filepath.Join(base, data.ModuleName+".mapper.go"), "mapper method"},
 	}
 	return generateTpls(sp, tpls, data)
 }
@@ -449,6 +543,25 @@ func generateModule(sp *common.Spinner, data *TemplateData) error {
 	return nil
 }
 
+func generateMigration(sp *common.Spinner, data *TemplateData) error {
+	out := filepath.Join("src", data.ModuleName, "migrations", "000_create_"+data.TableName+".sql")
+
+	sp.Start("Creating SQL migration...")
+	if err := common.RenderToFile(assets("templates/res/sql/migration.sql.tpl"), out, data); err != nil {
+		sp.Fail(fmt.Sprintf("Failed to create SQL migration: %v", err))
+		return fmt.Errorf("migration: %w", err)
+	}
+	sp.Step("✔ SQL migration created", "")
+	return nil
+}
+
+func resourceTemplate(data *TemplateData, path string) string {
+	if data.Database.IsSQL() {
+		return filepath.Join("templates", "res", "sql", path)
+	}
+	return filepath.Join("templates", "res", path)
+}
+
 // ── Single-purpose generators ───────────────────────────────────────
 
 // but reuses the same template.
@@ -474,7 +587,7 @@ func runDTOOnly(sp *common.Spinner, modulePath string, data *TemplateData) error
 // ── Tree printer ────────────────────────────────────────────────────
 
 // printTree prints the generated file structure for the module.
-func printTree(module string) {
+func printTree(module string, database DatabaseType) {
 	base := filepath.Join("src", module)
 	files := []string{
 		filepath.Join(base, module+".module.go"),
@@ -503,5 +616,8 @@ func printTree(module string) {
 	}
 	for _, f := range files {
 		fmt.Printf("    %s\n", f)
+	}
+	if database.IsSQL() {
+		fmt.Printf("    %s\n", filepath.Join(base, "migrations", "000_create_"+pluralize(module)+".sql"))
 	}
 }
