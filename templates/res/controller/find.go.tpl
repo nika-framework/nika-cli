@@ -1,8 +1,8 @@
 package controllers
 
 import ( 
-	"{{.ModulePath}}/src/{{.ModuleName}}/dto" 
-	res "{{.ModulePath}}/src/{{.ModuleName}}/response"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/dto" 
+	res "{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nika-framework/nika/common/response"

@@ -1,7 +1,7 @@
 package response
 
 import (
-	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
 	"github.com/nika-framework/nika/common/mongodb/repository"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

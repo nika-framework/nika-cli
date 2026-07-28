@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/dto"
 )
 
 func (s *{{.TypeName}}Service) Delete(ctx context.Context, input dto.FindOne{{.TypeName}}Dto) error {

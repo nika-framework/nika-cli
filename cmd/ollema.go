@@ -33,6 +33,12 @@ Example:
 	},
 }
 
+func init() {
+	// The command was defined but never registered, so `nika ollema` reported
+	// "unknown command" despite the whole implementation being present.
+	rootCmd.AddCommand(ollemaCmd)
+}
+
 func isRoutePrompt(prompt string) bool {
 	prompt = strings.ToLower(prompt)
 	for _, marker := range []string{"route", "روت", "mock", "ماک", "دیتای ماک", "endpoint"} {

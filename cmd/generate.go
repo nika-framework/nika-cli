@@ -33,6 +33,14 @@ Examples:
   nika g c product
   nika g dto order
   nika g migration create_users -d postgres
+
+Microservice workspaces:
+  When the project has an apps/ directory, the CLI asks which service the
+  module belongs to and generates into that service's src folder, with import
+  paths to match. Use -a/--app to answer up front:
+
+  nika g res user -a api
+  nika g res order --app micro-grpc
   nika g migration add_index_orders -d mongodb --format go
   nika g seed initial_admins -d postgres
 
@@ -96,6 +104,7 @@ Generating a migration from an existing model (real CREATE TABLE, not a stub):
 			Type:     genType,
 			Module:   name,
 			Database: generateDatabase,
+			App:      generateApp,
 		})
 	},
 }
@@ -106,6 +115,7 @@ var (
 	generateModel    string
 	generateTypeName string
 	generateTable    string
+	generateApp      string
 )
 
 func isMigrationType(s string) bool {
@@ -130,5 +140,6 @@ func init() {
 	generateCmd.Flags().StringVarP(&generateModel, "model", "m", "", "Path to a Go model file — generates real DDL/seed data from its db tags")
 	generateCmd.Flags().StringVar(&generateTypeName, "type", "", "Struct name inside --model (only needed when the file has several)")
 	generateCmd.Flags().StringVar(&generateTable, "table", "", "Override the derived table/collection name")
+	generateCmd.Flags().StringVarP(&generateApp, "app", "a", "", "Which app/microservice to generate into (skips the prompt in a workspace)")
 	rootCmd.AddCommand(generateCmd)
 }

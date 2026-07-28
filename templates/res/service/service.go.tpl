@@ -1,7 +1,7 @@
 package services
 
 import (
-	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
 )
 
 type {{.TypeName}}Service struct {

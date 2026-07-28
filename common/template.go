@@ -8,6 +8,31 @@ import (
 	"text/template"
 )
 
+// RenderString parses an in-memory template and executes it with data.
+// name is only used in error messages.
+func RenderString(name, content string, data interface{}) (string, error) {
+	t, err := template.New(filepath.Base(name)).Parse(content)
+	if err != nil {
+		return "", fmt.Errorf("parsing template %s: %w", name, err)
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("executing template %s: %w", name, err)
+	}
+	return buf.String(), nil
+}
+
+// WriteRendered writes already-rendered content to outputPath, creating parent
+// directories as needed.
+func WriteRendered(outputPath, rendered string) error {
+	dir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("creating directory %s: %w", dir, err)
+	}
+	return WriteFile(outputPath, rendered)
+}
+
 // RenderTemplate reads a .tpl file, parses it, and executes it with data.
 // Returns the rendered string.
 func RenderTemplate(tplPath string, data interface{}) (string, error) {

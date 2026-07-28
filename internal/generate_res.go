@@ -1,18 +1,15 @@
 package internal
 
 import (
-	"embed"
 	"fmt"
-	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/nika-framework/nika-cli/common"
+	"github.com/nika-framework/nika-cli/templates"
 )
 
 // ── Field Definition ────────────────────────────────────────────────
-var templateFS embed.FS
 
 // Field represents a single model field collected from the user.
 type Field struct {
@@ -39,6 +36,20 @@ type TemplateData struct {
 	SQLPrimaryKey  string
 	SQLTimestamp   string
 	Fields         []Field // user-defined fields (excluding ID/CreatedAt/UpdatedAt)
+
+	// AppName is the microservice this module belongs to ("api"), or "app" in
+	// the single-app layout.
+	AppName string
+	// SrcImport is the import-path fragment of the app's src folder:
+	// "src" for a classic project, "apps/api/src" in a workspace. Templates
+	// interpolate it instead of hard-coding "src", which is what lets the same
+	// templates serve both layouts.
+	SrcImport string
+}
+
+// target is the app this data was built for.
+func (d TemplateData) target() AppTarget {
+	return AppTarget{Name: d.AppName, SrcDir: d.SrcImport}
 }
 
 // ── MongoDB type catalog ────────────────────────────────────────────
@@ -65,18 +76,17 @@ var sqlTypes = []string{
 	"time.Time",
 }
 
-func assets(tpl string) string {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "templates"
+// renderTemplate renders one embedded template to disk.
+func renderTemplate(tpl, out string, data *TemplateData) error {
+	content, err := templates.Read(tpl)
+	if err != nil {
+		return fmt.Errorf("template %s not found in binary: %w", tpl, err)
 	}
-	fmt.Printf("Assets in filename %s \n", filename)
-	dir := filepath.Dir(filename)
-	dir = strings.ReplaceAll(dir, "/internal", "/")
-	fmt.Printf("Assets Dir in  %s \n", dir)
-	fmt.Printf("Assets File in filepath %s \n", filepath.Join(dir, tpl))
-
-	return filepath.Join(dir, tpl)
+	rendered, err := common.RenderString(tpl, content, data)
+	if err != nil {
+		return err
+	}
+	return common.WriteRendered(out, rendered)
 }
 
 // mongoTypeDefaultValidate gives a sensible validate tag per type.
@@ -175,6 +185,13 @@ func collectFields(sp *common.Spinner, database DatabaseType) ([]Field, error) {
 	return fields, nil
 }
 
+// NewField builds a Field with all of its tags derived, validating the name
+// and type against what the database supports. Exported for the AI agent,
+// which assembles fields from a model's JSON rather than from prompts.
+func NewField(name, goType string, required bool, database DatabaseType) (Field, error) {
+	return newField(name, goType, required, database)
+}
+
 func newField(name, goType string, required bool, database DatabaseType) (Field, error) {
 	name = strings.ToLower(strings.TrimSpace(name))
 	if !isValidModule(name) {
@@ -230,6 +247,11 @@ type GenerateConfig struct {
 	Module   string  // raw module name from args
 	Database string  // optional database name for non-interactive generation
 	Fields   []Field // optional fields for non-interactive generation
+	// App names the microservice to generate into. Empty means "ask", unless
+	// the workspace has only one app.
+	App string
+	// SkipRegister leaves app.module.go untouched.
+	SkipRegister bool
 }
 
 // RunGenerate is the top-level entry for `nika g <type> <module>`.
@@ -237,30 +259,32 @@ func RunGenerate(cfg *GenerateConfig) error {
 	// Step 1: validate environment
 	common.Section("Environment Check")
 	sp := common.NewSpinner()
-	// sp.Stop("")
-	// sp.Start("Checking for go.mod...")
-	if _, err := os.Stat("go.mod"); err != nil {
-		// sp.Fail("go.mod not found — run this command inside a Nika project root")
-		return fmt.Errorf("not in a Go project (no go.mod)")
-	}
-	modulePath, err := ResolveModulePath()
-	if err != nil {
-		// sp.Fail(fmt.Sprintf("Failed to read module path: %v", err))
-		return fmt.Errorf("module path: %w", err)
-	}
-	// sp.Step(fmt.Sprintf("Module: %s", modulePath), "Validating module name...")
 
-	// Step 2: validate module name
+	workspace, err := LoadWorkspace()
+	if err != nil {
+		return err
+	}
+	modulePath := workspace.ModulePath
+
+	// Step 2: pick the target app. In a microservice workspace this is the
+	// question that used to be skipped entirely, which is why every module
+	// landed in a top-level src/ that no service imports.
+	app, err := workspace.SelectApp(cfg.App)
+	if err != nil {
+		return err
+	}
+	if workspace.Microservice {
+		fmt.Printf("  📍 Target service: %s (%s)\n", app.Name, app.SrcDir)
+	}
+
+	// Step 3: validate module name
 	moduleName := strings.ToLower(strings.TrimSpace(cfg.Module))
 	if moduleName == "" {
-		// sp.Fail("module name is required")
 		return fmt.Errorf("module name is required")
 	}
 	if !isValidModule(moduleName) {
-		// sp.Fail(fmt.Sprintf("invalid module name %q — use lowercase letters, digits, underscores", moduleName))
 		return fmt.Errorf("invalid module name: %s", moduleName)
 	}
-	// sp.Step(fmt.Sprintf("Module name %q is valid", moduleName), "")
 
 	// Build template data
 	database := ParseDatabaseType(cfg.Database)
@@ -275,16 +299,31 @@ func RunGenerate(cfg *GenerateConfig) error {
 		CollectionName: pluralize(moduleName),
 		TableName:      pluralize(moduleName),
 		Database:       database,
+		AppName:        app.Name,
+		SrcImport:      app.SrcImport(),
 	}
 	if cfg.Fields != nil {
 		data.Fields = cfg.Fields
 	}
 
-	fmt.Println(data.CollectionName, cfg.Type)
-	// Step 3: dispatch by type
+	// Keep .nika.toml in step with what we just detected, so `nika start` and
+	// the next `nika g` agree on the layout. A failure here is not fatal.
+	if workspace.Microservice {
+		if err := workspace.Sync(); err != nil {
+			fmt.Printf("  ⚠ could not update %s: %v\n", nikaConfigPath, err)
+		}
+	}
+
+	// Step 4: dispatch by type
 	switch cfg.Type {
 	case GenResource, GenRes:
-		return runResource(sp, modulePath, &data)
+		if err := runResource(sp, modulePath, &data); err != nil {
+			return err
+		}
+		if !cfg.SkipRegister {
+			registerInAppModule(&data)
+		}
+		return nil
 	case GenController, GenC:
 		return runControllerOnly(sp, modulePath, &data)
 	case GenResponse, GenR:
@@ -295,6 +334,24 @@ func RunGenerate(cfg *GenerateConfig) error {
 		return runDTOOnly(sp, modulePath, &data)
 	default:
 		return fmt.Errorf("unknown generate type: %s", cfg.Type)
+	}
+}
+
+// registerInAppModule wires the new module into the app's app.module.go and
+// reports what happened. Registration failing is a warning, not an error: the
+// files are already on disk and the user can add the one line by hand.
+func registerInAppModule(data *TemplateData) {
+	target := data.target()
+	added, err := RegisterModule(target, data.ModulePath, data.ModuleName, data.TypeName)
+	switch {
+	case err != nil:
+		fmt.Printf("  ⚠ Could not auto-register the module in %s: %v\n", target.AppModulePath(), err)
+		fmt.Printf("     Add it manually: import \"%s/%s/%s\" then %s.New%sModule(),\n",
+			data.ModulePath, data.SrcImport, data.ModuleName, data.ModuleName, data.TypeName)
+	case added:
+		fmt.Printf("  ✔ Registered %sModule in %s\n", data.TypeName, target.AppModulePath())
+	default:
+		fmt.Printf("  ✔ %sModule was already registered in %s\n", data.TypeName, target.AppModulePath())
 	}
 }
 
@@ -404,11 +461,8 @@ func runResource(sp *common.Spinner, modulePath string, data *TemplateData) erro
 	fmt.Printf("  📦 Resource %q generated successfully!\n", data.ModuleName)
 	fmt.Println()
 	fmt.Println("  Files created:")
-	printTree(data.ModuleName, data.Database)
+	printTree(data.target(), data.ModuleName, data.Database)
 	fmt.Println()
-	fmt.Printf("  ⚠ Don't forget to import %sModule in your app.module.go Imports()!\n", data.TypeName)
-	fmt.Printf("     import \"%s/src/%s\"\n", modulePath, data.ModuleName)
-	fmt.Printf("     // then add: %s.New%sModule(),\n", data.ModuleName, data.TypeName)
 	if data.Database.IsSQL() {
 		fmt.Printf("  ⚠ Configure sqldb.Setup with the %s driver before loading this module.\n", data.Database.DisplayName())
 	}
@@ -419,7 +473,7 @@ func runResource(sp *common.Spinner, modulePath string, data *TemplateData) erro
 // ── Schema generator ────────────────────────────────────────────────
 
 func generateSchema(sp *common.Spinner, data *TemplateData) error {
-	base := filepath.Join("src", data.ModuleName, "schema")
+	base := filepath.Join(data.target().ModuleDir(data.ModuleName), "schema")
 	tpls := []struct {
 		tpl   string
 		out   string
@@ -436,7 +490,7 @@ func generateSchema(sp *common.Spinner, data *TemplateData) error {
 // ── DTO generator ───────────────────────────────────────────────────
 
 func generateDTOs(sp *common.Spinner, data *TemplateData) error {
-	base := filepath.Join("src", data.ModuleName, "dto")
+	base := filepath.Join(data.target().ModuleDir(data.ModuleName), "dto")
 	tpls := []struct {
 		tpl   string
 		out   string
@@ -448,21 +502,13 @@ func generateDTOs(sp *common.Spinner, data *TemplateData) error {
 		{"templates/res/dto/find.dto.go.tpl", filepath.Join(base, "find.dto.go"), "find/list DTO"},
 	}
 
-	for _, t := range tpls {
-		sp.Start(fmt.Sprintf("Creating %s...", t.label))
-		if err := common.RenderToFile(assets(t.tpl), t.out, data); err != nil {
-			sp.Fail(fmt.Sprintf("Failed to create %s: %v", t.label, err))
-			return fmt.Errorf("dto %s: %w", t.label, err)
-		}
-		sp.Step(fmt.Sprintf("✔ %s created", t.label), "")
-	}
-	return nil
+	return generateTpls(sp, tpls, data)
 }
 
 // ── Service generator ───────────────────────────────────────────────
 
 func generateServices(sp *common.Spinner, data *TemplateData) error {
-	base := filepath.Join("src", data.ModuleName, "services")
+	base := filepath.Join(data.target().ModuleDir(data.ModuleName), "services")
 	tpls := []struct {
 		tpl   string
 		out   string
@@ -482,7 +528,7 @@ func generateServices(sp *common.Spinner, data *TemplateData) error {
 // ── Controller generator ────────────────────────────────────────────
 
 func generateController(sp *common.Spinner, data *TemplateData) error {
-	base := filepath.Join("src", data.ModuleName, "controllers")
+	base := filepath.Join(data.target().ModuleDir(data.ModuleName), "controllers")
 	tpls := []struct {
 		tpl   string
 		out   string
@@ -501,7 +547,7 @@ func generateController(sp *common.Spinner, data *TemplateData) error {
 // ── Module response ────────────────────────────────────────────────
 
 func generateResponse(sp *common.Spinner, data *TemplateData) error {
-	base := filepath.Join("src", data.ModuleName, "response")
+	base := filepath.Join(data.target().ModuleDir(data.ModuleName), "response")
 	tpls := []struct {
 		tpl   string
 		out   string
@@ -520,9 +566,9 @@ func generateTpls(sp *common.Spinner, tpls []struct {
 }, data *TemplateData) error {
 	for _, t := range tpls {
 		sp.Start(fmt.Sprintf("Creating %s...", t.label))
-		if err := common.RenderToFile(assets(t.tpl), t.out, data); err != nil {
+		if err := renderTemplate(t.tpl, t.out, data); err != nil {
 			sp.Fail(fmt.Sprintf("Failed to create %s: %v", t.label, err))
-			return fmt.Errorf("service %s: %w", t.label, err)
+			return fmt.Errorf("%s: %w", t.label, err)
 		}
 		sp.Step(fmt.Sprintf("✔ %s created", t.label), "")
 	}
@@ -532,10 +578,11 @@ func generateTpls(sp *common.Spinner, tpls []struct {
 // ── Module generator ────────────────────────────────────────────────
 
 func generateModule(sp *common.Spinner, data *TemplateData) error {
-	out := filepath.Join("src", data.ModuleName, data.ModuleName+".module.go")
+	moduleDir := data.target().ModuleDir(data.ModuleName)
+	out := filepath.Join(moduleDir, data.ModuleName+".module.go")
 
 	sp.Start("Creating module registration...")
-	if err := common.RenderToFile(assets("templates/res/module.go.tpl"), out, data); err != nil {
+	if err := renderTemplate("templates/res/module.go.tpl", out, data); err != nil {
 		sp.Fail(fmt.Sprintf("Failed to create module: %v", err))
 		return fmt.Errorf("module: %w", err)
 	}
@@ -544,10 +591,11 @@ func generateModule(sp *common.Spinner, data *TemplateData) error {
 }
 
 func generateMigration(sp *common.Spinner, data *TemplateData) error {
-	out := filepath.Join("src", data.ModuleName, "migrations", "000_create_"+data.TableName+".sql")
+	moduleDir := data.target().ModuleDir(data.ModuleName)
+	out := filepath.Join(moduleDir, "migrations", "000_create_"+data.TableName+".sql")
 
 	sp.Start("Creating SQL migration...")
-	if err := common.RenderToFile(assets("templates/res/sql/migration.sql.tpl"), out, data); err != nil {
+	if err := renderTemplate("templates/res/sql/migration.sql.tpl", out, data); err != nil {
 		sp.Fail(fmt.Sprintf("Failed to create SQL migration: %v", err))
 		return fmt.Errorf("migration: %w", err)
 	}
@@ -587,8 +635,8 @@ func runDTOOnly(sp *common.Spinner, modulePath string, data *TemplateData) error
 // ── Tree printer ────────────────────────────────────────────────────
 
 // printTree prints the generated file structure for the module.
-func printTree(module string, database DatabaseType) {
-	base := filepath.Join("src", module)
+func printTree(app AppTarget, module string, database DatabaseType) {
+	base := app.ModuleDir(module)
 	files := []string{
 		filepath.Join(base, module+".module.go"),
 		filepath.Join(base, "schema", module+".model.go"),

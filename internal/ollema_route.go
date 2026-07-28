@@ -49,7 +49,21 @@ func runOllemaRoute(runtime agentRuntime, userPrompt string, output io.Writer) e
 	}
 	moduleName := plan.Module
 
-	moduleDir := filepath.Join("src", plan.Module)
+	workspace, err := LoadWorkspace()
+	if err != nil {
+		return err
+	}
+	// Look for the module in every app before asking. In a workspace the
+	// module name alone usually identifies the service, and a prompt the user
+	// can answer wrong is worse than a search that cannot.
+	app, ok := workspace.FindModule(plan.Module)
+	if !ok {
+		app, err = workspace.SelectApp("")
+		if err != nil {
+			return err
+		}
+	}
+	moduleDir := app.ModuleDir(plan.Module)
 	if info, err := os.Stat(moduleDir); err != nil || !info.IsDir() {
 		return fmt.Errorf("module %q was not found at %s", plan.Module, moduleDir)
 	}
@@ -100,7 +114,7 @@ func runOllemaRoute(runtime agentRuntime, userPrompt string, output io.Writer) e
 		plan.Values[question.Field] = raw
 	}
 
-	routeSource, err := buildMockRoute(plan, selected.Type, plan.Module, modelSource)
+	routeSource, err := buildMockRoute(plan, selected.Type, plan.Module, modelSource, workspace.ModulePath, app.SrcImport())
 	if err != nil {
 		return err
 	}
@@ -190,7 +204,7 @@ func findControllers(dir string) ([]controllerInfo, error) {
 	return result, nil
 }
 
-func buildMockRoute(plan aiRouteSpec, controllerType, module, modelSource string) (string, error) {
+func buildMockRoute(plan aiRouteSpec, controllerType, module, modelSource, modulePath, srcImport string) (string, error) {
 	modelType := toPascalCase(module)
 	fieldPattern := regexp.MustCompile(`(?m)^\s*([A-Z][A-Za-z0-9_]*)\s+([^\s` + "`" + `]+)\s+`)
 	matches := fieldPattern.FindAllStringSubmatch(modelSource, -1)
@@ -218,10 +232,16 @@ func buildMockRoute(plan aiRouteSpec, controllerType, module, modelSource string
 		fields = append(fields, fmt.Sprintf("\t\t%s: %s,", name, literal))
 	}
 
+	if srcImport == "" {
+		srcImport = "src"
+	}
+	if modulePath == "" {
+		modulePath = modulePathForRoute()
+	}
 	var imports []string
 	imports = append(imports,
-		fmt.Sprintf("\t\"%s/src/%s/dto\"", modulePathForRoute(), module),
-		fmt.Sprintf("\tres \"%s/src/%s/response\"", modulePathForRoute(), module),
+		fmt.Sprintf("\t\"%s/%s/%s/dto\"", modulePath, srcImport, module),
+		fmt.Sprintf("\tres \"%s/%s/%s/response\"", modulePath, srcImport, module),
 		"\t\"github.com/gin-gonic/gin\"",
 		"\t\"github.com/nika-framework/nika/common/response\"",
 	)

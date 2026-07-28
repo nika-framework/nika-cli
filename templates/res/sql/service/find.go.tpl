@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 
-	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
-	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/dto"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
 	"github.com/nika-framework/nika/common/sqldb/repository"
 )
 

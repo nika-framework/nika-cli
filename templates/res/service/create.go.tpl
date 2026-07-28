@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 
-	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
-	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/dto"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
 )
 
 func (s *{{.TypeName}}Service) Create(ctx context.Context, input dto.Create{{.TypeName}}Dto) (*schema.{{.TypeName}}, error) {

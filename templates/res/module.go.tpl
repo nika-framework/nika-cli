@@ -1,9 +1,9 @@
 package {{.ModuleName}}
 
 import (
-	"{{.ModulePath}}/src/{{.ModuleName}}/controllers"
-	"{{.ModulePath}}/src/{{.ModuleName}}/schema"
-	"{{.ModulePath}}/src/{{.ModuleName}}/services"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/controllers"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/services"
 	"github.com/nika-framework/nika"
 )
 

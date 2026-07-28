@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"{{.ModulePath}}/src/{{.ModuleName}}/dto"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/dto"
 	"github.com/nika-framework/nika/common/mongodb/repository"
 )
  

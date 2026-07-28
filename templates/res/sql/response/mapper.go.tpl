@@ -1,6 +1,6 @@
 package response
 
-import "{{.ModulePath}}/src/{{.ModuleName}}/schema"
+import "{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
 
 func To{{.TypeName}}Response(item *schema.{{.TypeName}}) {{.TypeName}}Response {
 	return {{.TypeName}}Response{

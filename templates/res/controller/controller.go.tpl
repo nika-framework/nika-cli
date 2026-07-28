@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"github.com/gin-gonic/gin" 
-	"{{.ModulePath}}/src/{{.ModuleName}}/services" 
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/services" 
 )
 
 type {{.TypeName}}Controller struct {

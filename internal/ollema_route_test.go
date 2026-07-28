@@ -42,7 +42,8 @@ func TestBuildMockRouteUsesHandlerSuffixAndSwagger(t *testing.T) {
 			"title": json.RawMessage(`"Mock title"`),
 		},
 	}
-	source, err := buildMockRoute(plan, "NewsController", "news", "type News struct {\n\tTitle string `bson:\"title\"`\n}")
+	model := "type News struct {\n\tTitle string `bson:\"title\"`\n}"
+	source, err := buildMockRoute(plan, "NewsController", "news", model, "nikaapp", "apps/api/src")
 	if err != nil {
 		t.Fatalf("buildMockRoute() error = %v", err)
 	}
@@ -50,6 +51,8 @@ func TestBuildMockRouteUsesHandlerSuffixAndSwagger(t *testing.T) {
 		"func (c *NewsController) CreateMockHandler(",
 		"@Summary Create mock News",
 		"@Router /newss/mock [post]",
+		// The import must follow the app's src folder, not a hard-coded src/.
+		`"nikaapp/apps/api/src/news/dto"`,
 	} {
 		if !strings.Contains(source, want) {
 			t.Errorf("generated route does not contain %q", want)

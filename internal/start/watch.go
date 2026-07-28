@@ -14,7 +14,10 @@ import (
 )
 
 // runWithWatch runs the project and restarts it on file changes using fsnotify
-func runWithWatch(config Config) error {
+func runWithWatch(resolved plan) error {
+	config := resolved.Config
+	build := resolved.Build
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return fmt.Errorf("failed to create watcher: %w", err)
@@ -25,8 +28,8 @@ func runWithWatch(config Config) error {
 	signal.Notify(sigChan, os.Interrupt)
 
 	// Compile exclude regex patterns once
-	excludeRegexes := make([]*regexp.Regexp, 0, len(config.Build.ExcludeRegex))
-	for _, pattern := range config.Build.ExcludeRegex {
+	excludeRegexes := make([]*regexp.Regexp, 0, len(build.ExcludeRegex))
+	for _, pattern := range build.ExcludeRegex {
 		re, err := regexp.Compile(pattern)
 		if err != nil {
 			return fmt.Errorf("invalid exclude_regex %q: %w", pattern, err)
@@ -34,7 +37,7 @@ func runWithWatch(config Config) error {
 		excludeRegexes = append(excludeRegexes, re)
 	}
 
-	err = addDirRecursively(watcher, config.Root, config.Build.ExcludeDir)
+	err = addDirRecursively(watcher, config.Root, build.ExcludeDir)
 	if err != nil {
 		return fmt.Errorf("failed to watch directory: %w", err)
 	}
@@ -43,7 +46,7 @@ func runWithWatch(config Config) error {
 	var debounceTimer *time.Timer
 	var currentDone chan struct{}
 	// Delay comes from config (milliseconds). Fallback to 1000ms if not set.
-	delay := time.Duration(config.Build.Delay) * time.Millisecond
+	delay := time.Duration(build.Delay) * time.Millisecond
 	if delay <= 0 {
 		delay = 1 * time.Second
 	}
@@ -71,7 +74,7 @@ func runWithWatch(config Config) error {
 			cmd.Dir = config.Root
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			cmd.Env = buildEnv(config)
+			cmd.Env = buildEnv(build)
 			if err := cmd.Run(); err != nil {
 				fmt.Printf("⚠️  Command failed: %s (%v)\n", c, err)
 			}
@@ -82,22 +85,22 @@ func runWithWatch(config Config) error {
 		stopCurrentCmd()
 
 		// Run pre_cmd hooks
-		runCmdList(config.Build.PreCmd)
+		runCmdList(build.PreCmd)
 
 		fmt.Println("🚀 Starting application...")
 
-		cmdName := config.Build.Cmd
+		cmdName := build.Cmd
 		if cmdName == "" {
 			cmdName = "go run"
 		}
 		cmdParts := strings.Fields(cmdName)
-		args := append(cmdParts[1:], config.Build.Args...)
+		args := append(append([]string{}, cmdParts[1:]...), build.Args...)
 
 		cmd := exec.Command(cmdParts[0], args...)
 		cmd.Dir = config.Root
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		cmd.Env = buildEnv(config)
+		cmd.Env = buildEnv(build)
 
 		configureProcess(cmd)
 
@@ -120,7 +123,7 @@ func runWithWatch(config Config) error {
 				currentCmd = nil
 			}
 			// Run post_cmd hooks after process exits
-			runCmdList(config.Build.PostCmd)
+			runCmdList(build.PostCmd)
 			close(done)
 		}()
 	}
@@ -134,7 +137,7 @@ func runWithWatch(config Config) error {
 				return nil
 			}
 			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
-				if !shouldWatch(event.Name, config, excludeRegexes) {
+				if !shouldWatch(event.Name, build, excludeRegexes) {
 					continue
 				}
 				if debounceTimer != nil {
@@ -165,11 +168,11 @@ func runWithWatch(config Config) error {
 
 // shouldWatch decides whether a changed file should trigger a restart,
 // based on include_ext, exclude_file and exclude_regex from the config.
-func shouldWatch(path string, config Config, excludeRegexes []*regexp.Regexp) bool {
+func shouldWatch(path string, build BuildConfig, excludeRegexes []*regexp.Regexp) bool {
 	base := filepath.Base(path)
 
 	// exclude_file: exact file name match
-	for _, ef := range config.Build.ExcludeFile {
+	for _, ef := range build.ExcludeFile {
 		if base == ef {
 			return false
 		}
@@ -183,10 +186,10 @@ func shouldWatch(path string, config Config, excludeRegexes []*regexp.Regexp) bo
 	}
 
 	// include_ext: only watch files with these extensions (if configured)
-	if len(config.Build.IncludeExt) > 0 {
+	if len(build.IncludeExt) > 0 {
 		ext := filepath.Ext(base)
 		matched := false
-		for _, ie := range config.Build.IncludeExt {
+		for _, ie := range build.IncludeExt {
 			if ext == ie {
 				matched = true
 				break
@@ -200,10 +203,10 @@ func shouldWatch(path string, config Config, excludeRegexes []*regexp.Regexp) bo
 	return true
 }
 
-// buildEnv merges current process env with config.Build.Env
-func buildEnv(config Config) []string {
+// buildEnv merges current process env with the build section's env.
+func buildEnv(build BuildConfig) []string {
 	env := os.Environ()
-	for k, v := range config.Build.Env {
+	for k, v := range build.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 	return env
