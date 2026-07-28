@@ -164,6 +164,25 @@ func Commands() []Command {
 			Preview: "nika seed status",
 		},
 		{
+			ID: "micro.init", Group: "Workspace", Icon: "🪄", Mutates: true,
+			Title:       "Convert to microservices",
+			Description: "Move src/ and main.go under apps/<name>/ and rewrite every import that pointed at them.",
+			Preview:     "nika microservice init -n <name>",
+			Fields: []CommandField{
+				{Name: "name", Label: "App name", Kind: FieldText, Default: "api", Help: "The directory the current application moves into, under apps/."},
+			},
+		},
+		{
+			ID: "micro.add", Group: "Workspace", Icon: "📡", Mutates: true,
+			Title:       "Add a microservice",
+			Description: "Scaffold apps/<name> wired to one transport, with its .env variables.",
+			Preview:     "nika microservice <transport> [name]",
+			Fields: []CommandField{
+				{Name: "transport", Label: "Transport", Kind: FieldSelect, Options: internal.MicroTransportNames(), Default: "grpc", Required: true},
+				{Name: "name", Label: "Service name", Kind: FieldText, Placeholder: "leave empty for <transport>-micro"},
+			},
+		},
+		{
 			ID: "app.list", Group: "Workspace", Icon: "🧩",
 			Title: "List apps", Description: "Every app, its source folder, run command, and modules.",
 			Preview: "nika app list",
@@ -271,6 +290,17 @@ func RunCommand(dir string, input CommandInput, readOnly bool) (string, error) {
 		})
 	case "seed.status":
 		return captureCLI(func() error { return internal.RunSeed("status") })
+	case "micro.init":
+		return captureCLI(func() error {
+			return internal.RunMicroserviceInit(&internal.MicroInitConfig{AppName: input.value("name")})
+		})
+	case "micro.add":
+		return captureCLI(func() error {
+			return internal.RunMicroserviceAdd(&internal.MicroAddConfig{
+				Transport: input.value("transport"),
+				AppName:   input.value("name"),
+			})
+		})
 	case "app.list":
 		return runAppList()
 	case "app.use":

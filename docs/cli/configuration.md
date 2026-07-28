@@ -86,7 +86,7 @@ explicit `mode = "single"` pins the classic layout even when `apps/` exists.
 > **`src_dir` is a folder name, not a path.** It is the module folder *inside*
 > each app, so the only sensible value is `src`. Writing `src_dir = "apps/api/"`
 > — a natural guess, since that is where the source lives — would produce paths
-> like `apps/micro-grpc/apps/api//product`. Both `src_dir` and `apps_dir` are
+> like `apps/micro-grpc/apps/api/product`. Both `src_dir` and `apps_dir` are
 > now validated: a value containing a slash is rejected, the default is used
 > instead, and the CLI says so:
 >

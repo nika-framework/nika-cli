@@ -17,6 +17,7 @@ A modern CLI tool for building applications with the Nika framework.
 - [generate](./commands/generate.md) - Generate modules and components
 - [agent](./commands/agent.md) - Run the AI agent, or configure a provider
 - [app](./cli/app.md) - Inspect and configure the apps in a workspace
+- [microservice](./cli/microservice.md) - Convert to a workspace and add transport services
 - [start](./cli/start.md) - Run an application, with or without hot reload
 - [swagger](./cli/swagger.md) - Swagger/OpenAPI documentation
 - [version](./cli/version.md) - Version information

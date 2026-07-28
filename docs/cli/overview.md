@@ -29,6 +29,7 @@ go build -o nika
 | `nika generate` / `nika g` | Generate resources and individual layers | [generate](generate.md) |
 | `nika agent` | Run the AI agent, or open the browser console | [agent](agent.md) |
 | `nika app` | Inspect and configure the apps in a workspace | [app](app.md) |
+| `nika microservice` / `nika micro` | Convert to a workspace and add transport services | [microservice](microservice.md) |
 | `nika start` | Run an application, optionally with hot reload | [start](start.md) |
 | `nika migrate` | Apply, roll back, or inspect migrations | [generate](generate.md#migrations-and-seeds) |
 | `nika seed` | Run database seeders | [generate](generate.md#migrations-and-seeds) |

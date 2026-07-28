@@ -157,7 +157,7 @@ func LoadFrom(dir string) (Config, bool, error) {
 // It returns a warning for every value it had to correct. Silently accepting a
 // malformed one is worse than it sounds: `src_dir = "apps/api/"` — a natural
 // guess, since it does describe where the source lives — used to produce paths
-// like apps/micro-grpc/apps/api//product with no error at all.
+// like apps/micro-grpc/apps/api/product with no error at all.
 func (c *Config) Normalize() []string {
 	var warnings []string
 

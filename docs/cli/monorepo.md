@@ -38,6 +38,20 @@ A directory under `apps/` counts as a service when it contains a `main.go` or a
 `src/` folder. Anything else — a `proto/` or `docs/` folder sitting alongside
 them — is ignored.
 
+## Getting there
+
+You do not have to build this layout by hand.
+[`nika microservice init`](microservice.md) moves an existing single-app
+project into `apps/api/` and rewrites every import, and
+`nika microservice <transport>` adds each further service already wired to
+Kafka, NATS, RabbitMQ, Redis, gRPC or TCP:
+
+```bash
+nika microservice init
+nika microservice grpc
+nika microservice kafka orders-worker
+```
+
 ## Detection
 
 No configuration is required. The CLI looks for `apps/` first, then falls back
@@ -111,7 +125,7 @@ Generated import paths follow the target service:
 // apps/micro-grpc/src/product/product.module.go
 import (
     "nikaapp/apps/micro-grpc/src/product/controllers"
-    "nikaapp/apps/micro-grpc/src/product/schema"
+    "nikaapp/apps/micro-grpc/src/product/entity"
     "nikaapp/apps/micro-grpc/src/product/services"
 )
 ```
@@ -127,7 +141,12 @@ The module is registered in that service's own
 nika start                  # the default app
 nika start -a micro-grpc    # one specific service
 nika start -a api --watch
+nika start --watch -a       # every service at once, one process each
 ```
+
+`-a` with no name starts all of them together, tagging each line of output with
+the service it came from. See
+[`nika start`](start.md#running-every-service).
 
 Set the default once:
 

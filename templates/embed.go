@@ -12,10 +12,12 @@ import (
 	"strings"
 )
 
-// FS holds every .tpl under templates/res. Dot-prefixed files (.DS_Store) are
-// excluded by the embed rules.
+// FS holds every .tpl under templates/res (the resource generator) and
+// templates/micro (the microservice scaffolder). Dot-prefixed files
+// (.DS_Store) are excluded by the embed rules.
 //
 //go:embed res
+//go:embed micro
 var FS embed.FS
 
 // Read returns the contents of a template.

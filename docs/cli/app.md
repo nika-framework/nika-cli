@@ -108,5 +108,6 @@ NIKA_APP=micro-grpc nika g res order
 
 - [Workspaces](monorepo.md) - layout detection and the microservice model.
 - [Configuration](configuration.md) - the `[workspace]` and `[apps.*]` sections.
-- [`nika start`](start.md) - running one service.
+- [`nika microservice`](microservice.md) - creating the apps this command lists.
+- [`nika start`](start.md) - running one service, or all of them.
 - [`nika generate`](generate.md) - generating into one service.

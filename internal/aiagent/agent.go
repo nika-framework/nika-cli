@@ -399,6 +399,20 @@ A module lives in one folder and has a fixed shape:
 
 <src> is "src" in a single-app project and "apps/<app>/src" in a microservice workspace. Import paths always mirror the folder path: "<module path>/<src>/<module>/dto".
 
+# Microservices
+
+A single-app project becomes a workspace with ` + "`nika microservice init`" + `, which moves src/ and main.go under apps/api/ and rewrites every import. Shared code — go.mod, .env, internal/, cmd/migrate, cmd/seed — stays at the root.
+
+` + "`nika microservice <transport> [name]`" + ` adds a service under apps/, defaulting to apps/<transport>-micro. Transports: kafka, nats, rabbit, redis, grpc, tcp. Each generated main.go builds its transport from .env and calls app.RunWorker() instead of app.Listen().
+
+A message handler is a controller field with a transport and a pattern tag, and it may carry a route tag too so one handler serves HTTP and messages:
+
+  Create func(*gin.Context) ` + "`route:\"POST:/users\" transport:\"grpc\" pattern:\"user_created\"`" + `
+
+Patterns use "_" as their separator, never ".": a dot is AMQP's topic word separator and RabbitMQ rejects a pattern containing one.
+
+Run services with ` + "`nika start --watch -a <name>`" + `, or ` + "`nika start --watch -a`" + ` with no name for all of them at once.
+
 Layer rules:
 - Models: MongoDB uses bson+json tags and primitive.ObjectID IDs; PostgreSQL, MySQL and SQLite use db+json tags with int64 IDs.
 - DTOs carry validate tags, e.g. validate:"required,min=1".
