@@ -34,6 +34,7 @@ func TestRunGenerateUsesDatabaseSpecificTemplates(t *testing.T) {
 	cases := []struct {
 		name               string
 		database           string
+		modelPkg           string
 		modelContains      string
 		repositoryContains string
 		migrationContains  string
@@ -41,12 +42,14 @@ func TestRunGenerateUsesDatabaseSpecificTemplates(t *testing.T) {
 		{
 			name:               "MongoDB",
 			database:           "mongodb",
+			modelPkg:           "schema",
 			modelContains:      "primitive.ObjectID",
 			repositoryContains: "common/mongodb/repository",
 		},
 		{
 			name:               "PostgreSQL",
 			database:           "postgres",
+			modelPkg:           "entity",
 			modelContains:      "ID        int64 `db:\"id\" json:\"id\"`",
 			repositoryContains: "common/sqldb/repository",
 			migrationContains:  "id BIGSERIAL PRIMARY KEY",
@@ -54,6 +57,7 @@ func TestRunGenerateUsesDatabaseSpecificTemplates(t *testing.T) {
 		{
 			name:               "MySQL",
 			database:           "mysql",
+			modelPkg:           "entity",
 			modelContains:      "ID        int64 `db:\"id\" json:\"id\"`",
 			repositoryContains: "common/sqldb/repository",
 			migrationContains:  "id BIGINT AUTO_INCREMENT PRIMARY KEY",
@@ -61,6 +65,7 @@ func TestRunGenerateUsesDatabaseSpecificTemplates(t *testing.T) {
 		{
 			name:               "SQLite",
 			database:           "sqlite",
+			modelPkg:           "entity",
 			modelContains:      "ID        int64 `db:\"id\" json:\"id\"`",
 			repositoryContains: "common/sqldb/repository",
 			migrationContains:  "id INTEGER PRIMARY KEY AUTOINCREMENT",
@@ -90,17 +95,25 @@ func TestRunGenerateUsesDatabaseSpecificTemplates(t *testing.T) {
 				t.Fatalf("RunGenerate() error = %v", err)
 			}
 
-			model := readGeneratedFile(t, filepath.Join("src", "book", "schema", "book.model.go"))
+			// SQL modules keep the model under entity/, MongoDB under schema/.
+			model := readGeneratedFile(t, filepath.Join("src", "book", test.modelPkg, "book.model.go"))
+			if !strings.Contains(model, "package "+test.modelPkg) {
+				t.Errorf("model is not in package %q:\n%s", test.modelPkg, model)
+			}
 			if !strings.Contains(model, test.modelContains) {
 				t.Errorf("model does not contain %q:\n%s", test.modelContains, model)
 			}
 
-			repository := readGeneratedFile(t, filepath.Join("src", "book", "schema", "book.repository.go"))
+			repository := readGeneratedFile(t, filepath.Join("src", "book", test.modelPkg, "book.repository.go"))
 			if !strings.Contains(repository, test.repositoryContains) {
 				t.Errorf("repository does not contain %q:\n%s", test.repositoryContains, repository)
 			}
 
 			module := readGeneratedFile(t, filepath.Join("src", "book", "book.module.go"))
+			if !strings.Contains(module, "example.com/testapp/src/book/"+test.modelPkg) {
+				t.Errorf("module does not import the %s package:\n%s", test.modelPkg, module)
+			}
+
 			if !strings.Contains(module, "services.NewBookService") || !strings.Contains(module, "Exports() []interface{}") {
 				t.Errorf("module does not register the generated service correctly:\n%s", module)
 			}

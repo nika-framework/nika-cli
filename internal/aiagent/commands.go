@@ -81,27 +81,30 @@ func Commands() []Command {
 		{
 			ID: "generate.service", Group: "Generate", Icon: "⚙️", Mutates: true,
 			Title: "Service", Description: "Service base plus one file per CRUD method.",
-			Preview: "nika g service <module> -a <app>",
+			Preview: "nika g service <module> -d <database> -a <app>",
 			Fields: []CommandField{
 				{Name: "module", Label: "Module name", Kind: FieldText, Placeholder: "product", Required: true},
+				{Name: "database", Label: "Database", Kind: FieldSelect, Options: databaseOptions, Default: "sqlite", Required: true, Help: "Must match the module's database — SQL services import entity, MongoDB services import schema."},
 				{Name: "app", Label: "App", Kind: FieldApp},
 			},
 		},
 		{
 			ID: "generate.dto", Group: "Generate", Icon: "📥", Mutates: true,
 			Title: "DTOs", Description: "Create, update, find-one, and list DTOs.",
-			Preview: "nika g dto <module> -a <app>",
+			Preview: "nika g dto <module> -d <database> -a <app>",
 			Fields: []CommandField{
 				{Name: "module", Label: "Module name", Kind: FieldText, Placeholder: "product", Required: true},
+				{Name: "database", Label: "Database", Kind: FieldSelect, Options: databaseOptions, Default: "sqlite", Required: true, Help: "Must match the module's database — the ID type differs."},
 				{Name: "app", Label: "App", Kind: FieldApp},
 			},
 		},
 		{
 			ID: "generate.response", Group: "Generate", Icon: "📤", Mutates: true,
 			Title: "Response + mapper", Description: "Response structs and the model-to-response mapper.",
-			Preview: "nika g response <module> -a <app>",
+			Preview: "nika g response <module> -d <database> -a <app>",
 			Fields: []CommandField{
 				{Name: "module", Label: "Module name", Kind: FieldText, Placeholder: "product", Required: true},
+				{Name: "database", Label: "Database", Kind: FieldSelect, Options: databaseOptions, Default: "sqlite", Required: true, Help: "Must match the module's database — the mapper imports entity for SQL, schema for MongoDB."},
 				{Name: "app", Label: "App", Kind: FieldApp},
 			},
 		},
@@ -113,7 +116,7 @@ func Commands() []Command {
 				{Name: "name", Label: "Migration name", Kind: FieldText, Placeholder: "create_users", Required: true},
 				{Name: "database", Label: "Database", Kind: FieldSelect, Options: databaseOptions, Default: "sqlite", Required: true},
 				{Name: "format", Label: "Format", Kind: FieldSelect, Options: []string{"go", "sql"}, Default: "go"},
-				{Name: "model", Label: "Model file", Kind: FieldText, Placeholder: "src/user/schema/user.model.go", Help: "Optional — generates real DDL from the struct's db tags instead of a stub."},
+				{Name: "model", Label: "Model file", Kind: FieldText, Placeholder: "src/user/entity/user.model.go", Help: "Optional — generates real DDL from the struct's db tags instead of a stub."},
 			},
 		},
 		{
@@ -123,7 +126,7 @@ func Commands() []Command {
 			Fields: []CommandField{
 				{Name: "name", Label: "Seed name", Kind: FieldText, Placeholder: "initial_admins", Required: true},
 				{Name: "database", Label: "Database", Kind: FieldSelect, Options: databaseOptions, Default: "sqlite", Required: true},
-				{Name: "model", Label: "Model file", Kind: FieldText, Placeholder: "src/user/schema/user.model.go", Help: "Optional — builds a sample row from the struct."},
+				{Name: "model", Label: "Model file", Kind: FieldText, Placeholder: "src/user/entity/user.model.go", Help: "Optional — builds a sample row from the struct."},
 			},
 		},
 		{
@@ -181,7 +184,7 @@ func Commands() []Command {
 		{
 			ID: "swagger.init", Group: "Tools", Icon: "📘", Mutates: true,
 			Title: "Generate Swagger docs", Description: "Run swag init over the project.",
-			Preview: "swag init --dir <dir> --output <output>",
+			Preview: "swag init --parseDependency --parseInternal --dir <dir> --output <output> ",
 			Fields: []CommandField{
 				{Name: "dir", Label: "Directory", Kind: FieldText, Default: "./", Help: "Where main.go lives, e.g. ./apps/api"},
 				{Name: "output", Label: "Output", Kind: FieldText, Default: "./docs"},
@@ -275,7 +278,7 @@ func RunCommand(dir string, input CommandInput, readOnly bool) (string, error) {
 	case "app.sync":
 		return runAppSync()
 	case "swagger.init":
-		return runShell("swag", "init", "--dir", orDefault(input.value("dir"), "./"), "--output", orDefault(input.value("output"), "./docs"))
+		return runShell("swag", "init", "--parseDependency","--parseInternal", "--dir", orDefault(input.value("dir"), "./"), "--output", orDefault(input.value("output"), "./docs"))
 	case "go.build":
 		return runShell("go", "build", "./...")
 	case "go.test":
@@ -346,9 +349,10 @@ func runGenerateLayer(kind internal.GenerateType, input CommandInput) (string, e
 	}
 	return captureCLI(func() error {
 		return internal.RunGenerate(&internal.GenerateConfig{
-			Type:   kind,
-			Module: module,
-			App:    input.value("app"),
+			Type:     kind,
+			Module:   module,
+			Database: input.value("database"),
+			App:      input.value("app"),
 		})
 	})
 }

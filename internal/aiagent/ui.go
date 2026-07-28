@@ -549,7 +549,7 @@ function openCommand(command) {
     let control;
     if (field.kind === 'select' || field.kind === 'app') {
       control = document.createElement('select');
-      const options = field.kind === 'app' ? info.apps : (field.options || []);
+      const options = field.kind === 'app' ? (info.apps || []) : (field.options || []);
       if (field.kind === 'app' && !options.length) continue; // single-app project
       if (field.kind === 'app' && !field.required) control.appendChild(new Option('(ask / default)', ''));
       for (const option of options) control.appendChild(new Option(option, option));
@@ -658,6 +658,10 @@ $('suggest').addEventListener('wheel', (event) => {
 
 (async function boot() {
   info = await (await api('/api/session')).json();
+  // A single-app project reports no apps at all; normalise the shape once here
+  // so no renderer has to care whether it got a list, null, or nothing.
+  info.apps = info.apps || [];
+  info.commands = info.commands || [];
   $('sb-project').innerHTML = '📁 <code>' + info.project + '</code>';
   $('sb-model').innerHTML = '🧠 <code>' + info.model + '</code>';
   $('sb-apps').textContent = info.apps && info.apps.length ? '🧩 ' + info.apps.join(' · ') : '';

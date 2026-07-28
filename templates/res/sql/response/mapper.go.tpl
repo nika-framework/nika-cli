@@ -1,8 +1,8 @@
 package response
 
-import "{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
+import "{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/entity"
 
-func To{{.TypeName}}Response(item *schema.{{.TypeName}}) {{.TypeName}}Response {
+func To{{.TypeName}}Response(item *entity.{{.TypeName}}) {{.TypeName}}Response {
 	return {{.TypeName}}Response{
 		ID: item.ID,
 		{{- range .Fields}}
@@ -13,7 +13,7 @@ func To{{.TypeName}}Response(item *schema.{{.TypeName}}) {{.TypeName}}Response {
 	}
 }
 
-func MapListToResponse(data []schema.{{.TypeName}}, total int64, page int64, count int64) ListResponse {
+func MapListToResponse(data []entity.{{.TypeName}}, total int64, page int64, count int64) ListResponse {
 	items := make([]{{.TypeName}}Response, 0, len(data))
 	for i := range data {
 		items = append(items, To{{.TypeName}}Response(&data[i]))

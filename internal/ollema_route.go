@@ -68,7 +68,10 @@ func runOllemaRoute(runtime agentRuntime, userPrompt string, output io.Writer) e
 		return fmt.Errorf("module %q was not found at %s", plan.Module, moduleDir)
 	}
 
-	modelPath := filepath.Join(moduleDir, "schema", plan.Module+".model.go")
+	modelPath, err := findModuleModel(moduleDir, plan.Module)
+	if err != nil {
+		return err
+	}
 	modelSource, err := common.ReadFile(modelPath)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", modelPath, err)

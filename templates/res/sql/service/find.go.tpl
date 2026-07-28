@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/dto"
-	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/entity"
 	"github.com/nika-framework/nika/common/sqldb/repository"
 )
 
-func (s *{{.TypeName}}Service) Find(ctx context.Context, input dto.List{{.TypeName}}Dto) (*repository.PaginationResult[schema.{{.TypeName}}], error) {
+func (s *{{.TypeName}}Service) Find(ctx context.Context, input dto.List{{.TypeName}}Dto) (*repository.PaginationResult[entity.{{.TypeName}}], error) {
 	return s.repo.Pages(ctx, nil, input.Page, input.Count)
 }

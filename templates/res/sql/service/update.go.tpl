@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/dto"
-	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/entity"
 	"github.com/nika-framework/nika/common/sqldb/repository"
 )
 
-func (s *{{.TypeName}}Service) Update(ctx context.Context, param dto.FindOne{{.TypeName}}Dto, data dto.Update{{.TypeName}}Dto) (*schema.{{.TypeName}}, error) {
+func (s *{{.TypeName}}Service) Update(ctx context.Context, param dto.FindOne{{.TypeName}}Dto, data dto.Update{{.TypeName}}Dto) (*entity.{{.TypeName}}, error) {
 	model, err := s.repo.FindOneByID(ctx, param.ID)
 	if err != nil {
 		return nil, err

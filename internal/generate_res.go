@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -50,6 +51,39 @@ type TemplateData struct {
 // target is the app this data was built for.
 func (d TemplateData) target() AppTarget {
 	return AppTarget{Name: d.AppName, SrcDir: d.SrcImport}
+}
+
+// ModelPkg is the folder and package holding the model and repository: SQL
+// modules call it "entity", MongoDB modules still call it "schema".
+//
+// It is a method rather than a field on purpose — the database can be chosen
+// interactively after the data is built, and a field would go stale.
+func (d TemplateData) ModelPkg() string {
+	return modelPkg(d.Database)
+}
+
+// modelPkg is ModelPkg for callers that only have a database type.
+func modelPkg(database DatabaseType) string {
+	if database.IsSQL() {
+		return "entity"
+	}
+	return "schema"
+}
+
+// findModuleModel locates a module's model file without knowing its database.
+// Modules generated before the SQL rename still keep theirs under schema/, so
+// both names are tried rather than assuming one.
+func findModuleModel(moduleDir, module string) (string, error) {
+	candidates := []string{
+		filepath.Join(moduleDir, "entity", module+".model.go"),
+		filepath.Join(moduleDir, "schema", module+".model.go"),
+	}
+	for _, candidate := range candidates {
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("no model file for module %q — looked for %s", module, strings.Join(candidates, " and "))
 }
 
 // ── MongoDB type catalog ────────────────────────────────────────────
@@ -473,15 +507,16 @@ func runResource(sp *common.Spinner, modulePath string, data *TemplateData) erro
 // ── Schema generator ────────────────────────────────────────────────
 
 func generateSchema(sp *common.Spinner, data *TemplateData) error {
-	base := filepath.Join(data.target().ModuleDir(data.ModuleName), "schema")
+	pkg := data.ModelPkg()
+	base := filepath.Join(data.target().ModuleDir(data.ModuleName), pkg)
 	tpls := []struct {
 		tpl   string
 		out   string
 		label string
 	}{
-		{resourceTemplate(data, "schema/model.go.tpl"), filepath.Join(base, data.ModuleName+".model.go"), "model"},
-		{resourceTemplate(data, "schema/repository.go.tpl"), filepath.Join(base, data.ModuleName+".repository.go"), "repository"},
-		{resourceTemplate(data, "schema/repository.interface.go.tpl"), filepath.Join(base, data.ModuleName+".repository.interface.go"), "repository interface"},
+		{resourceTemplate(data, pkg+"/model.go.tpl"), filepath.Join(base, data.ModuleName+".model.go"), "model"},
+		{resourceTemplate(data, pkg+"/repository.go.tpl"), filepath.Join(base, data.ModuleName+".repository.go"), "repository"},
+		{resourceTemplate(data, pkg+"/repository.interface.go.tpl"), filepath.Join(base, data.ModuleName+".repository.interface.go"), "repository interface"},
 	}
 
 	return generateTpls(sp, tpls, data)
@@ -514,8 +549,8 @@ func generateServices(sp *common.Spinner, data *TemplateData) error {
 		out   string
 		label string
 	}{
-		{"templates/res/service/service.go.tpl", filepath.Join(base, data.ModuleName+".service.go"), "service base"},
-		{"templates/res/service/create.go.tpl", filepath.Join(base, "create.go"), "create method"},
+		{resourceTemplate(data, "service/service.go.tpl"), filepath.Join(base, data.ModuleName+".service.go"), "service base"},
+		{resourceTemplate(data, "service/create.go.tpl"), filepath.Join(base, "create.go"), "create method"},
 		{resourceTemplate(data, "service/findone.go.tpl"), filepath.Join(base, "findone.go"), "findone method"},
 		{resourceTemplate(data, "service/find.go.tpl"), filepath.Join(base, "find.go"), "find method"},
 		{resourceTemplate(data, "service/update.go.tpl"), filepath.Join(base, "update.go"), "update method"},
@@ -637,11 +672,12 @@ func runDTOOnly(sp *common.Spinner, modulePath string, data *TemplateData) error
 // printTree prints the generated file structure for the module.
 func printTree(app AppTarget, module string, database DatabaseType) {
 	base := app.ModuleDir(module)
+	pkg := modelPkg(database)
 	files := []string{
 		filepath.Join(base, module+".module.go"),
-		filepath.Join(base, "schema", module+".model.go"),
-		filepath.Join(base, "schema", module+".repository.go"),
-		filepath.Join(base, "schema", module+".repository.interface.go"),
+		filepath.Join(base, pkg, module+".model.go"),
+		filepath.Join(base, pkg, module+".repository.go"),
+		filepath.Join(base, pkg, module+".repository.interface.go"),
 		filepath.Join(base, "dto", "create.dto.go"),
 		filepath.Join(base, "dto", "update.dto.go"),
 		filepath.Join(base, "dto", "findone.dto.go"),

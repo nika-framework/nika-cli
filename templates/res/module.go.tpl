@@ -2,7 +2,7 @@ package {{.ModuleName}}
 
 import (
 	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/controllers"
-	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/schema"
+	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/{{.ModelPkg}}"
 	"{{.ModulePath}}/{{.SrcImport}}/{{.ModuleName}}/services"
 	"github.com/nika-framework/nika"
 )
@@ -21,7 +21,7 @@ func (m *{{.TypeName}}Module) Controllers() []interface{} {
 
 func (m *{{.TypeName}}Module) Providers() []interface{} {
 	return []interface{}{
-		schema.New{{.TypeName}}Repository,
+		{{.ModelPkg}}.New{{.TypeName}}Repository,
 		services.New{{.TypeName}}Service,
 	}
 }

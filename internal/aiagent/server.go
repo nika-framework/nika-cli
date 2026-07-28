@@ -183,13 +183,16 @@ type sessionInfo struct {
 }
 
 func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
+	// Apps starts as an empty slice, not nil: a single-app project has no apps
+	// to list, and the UI should receive [] rather than a JSON null.
 	info := sessionInfo{
 		Project:  s.options.Dir,
 		Model:    s.describe,
 		ReadOnly: s.options.ReadOnly,
+		Apps:     []string{},
 		Commands: Commands(),
 	}
-	if apps, err := loadApps(s.options.Dir); err == nil {
+	if apps, err := loadApps(s.options.Dir); err == nil && apps != nil {
 		info.Apps = apps
 	}
 	writeJSON(w, info)

@@ -47,7 +47,7 @@ When a user asks you to build a module with specific fields (for example, a book
 1. First, inspect the Nika project structure (there must be a src folder and a go.mod file).
 2. Choose the module name in lowercase and a proper format (for example, book).
 3. Use file creation tools to generate the following files in the user's project:
-   - Model and repository at src/<module>/schema/<module>.model.go, src/<module>/schema/<module>.repository.go, and src/<module>/schema/<module>.repository.interface.go
+   - Model and repository at src/<module>/<pkg>/<module>.model.go, src/<module>/<pkg>/<module>.repository.go, and src/<module>/<pkg>/<module>.repository.interface.go, where <pkg> is "entity" for SQL modules and "schema" for MongoDB modules
    - DTOs at src/<module>/dto/create.dto.go, src/<module>/dto/update.dto.go, src/<module>/dto/findone.dto.go, and src/<module>/dto/find.dto.go
    - Controller at src/<module>/controllers/<module>.controller.go and the CRUD methods (create.go, find.go, find-one.go, update.go, delete.go)
    - Service at src/<module>/services/<module>.service.go and the CRUD methods
@@ -94,7 +94,7 @@ When editing or creating Go files inside the ` + "`src`" + ` folder of a Nika pr
 
 1. **Modular architecture**:
    - Each module must live in its own folder under ` + "`src`" + ` (for example ` + "`src/product`" + `).
-   - Each module's internal structure contains the sub-folders ` + "`schema`" + ` (database/repository), ` + "`dto`" + ` (input definitions), ` + "`controllers`" + ` (handlers/routes), ` + "`services`" + ` (business logic), and ` + "`response`" + ` (outputs).
+   - Each module's internal structure contains the sub-folders ` + "`entity`" + ` for SQL or ` + "`schema`" + ` for MongoDB (database/repository), ` + "`dto`" + ` (input definitions), ` + "`controllers`" + ` (handlers/routes), ` + "`services`" + ` (business logic), and ` + "`response`" + ` (outputs).
 
 2. **Layer rules**:
 	- **Schema/Model**: Match the module database. MongoDB uses ` + "`bson`" + ` and ` + "`json`" + ` tags with ` + "`primitive.ObjectID`" + `; PostgreSQL, MySQL, and SQLite use ` + "`db`" + ` and ` + "`json`" + ` tags with ` + "`int64`" + ` IDs and the SQL repository.
@@ -162,7 +162,7 @@ This skill helps the AI agent build new modules in a Nika project with fields sp
 1. Inspect the project ` + "`src`" + ` folder and read the module path from ` + "`go.mod`" + `.
 2. Create the folder for the new module (for example ` + "`src/todo`" + `).
 3. Create the required files based on the Nika templates:
-   - Model and repository in ` + "`src/<module>/schema/`" + `
+   - Model and repository in ` + "`src/<module>/entity/`" + ` (SQL) or ` + "`src/<module>/schema/`" + ` (MongoDB)
    - Input DTOs in ` + "`src/<module>/dto/`" + `
    - Controller and routes in ` + "`src/<module>/controllers/`" + `
    - Services in ` + "`src/<module>/services/`" + `

@@ -45,9 +45,9 @@ Microservice workspaces:
   nika g seed initial_admins -d postgres
 
 Generating a migration from an existing model (real CREATE TABLE, not a stub):
-  nika g migration create_users -d sqlite -m src/user/schema/user.model.go
-  nika g migration create_users -d sqlite -m src/user/schema/user.model.go --format sql
-  nika g seed initial_users -d sqlite -m src/user/schema/user.model.go`,
+  nika g migration create_users -d sqlite -m src/user/entity/user.model.go
+  nika g migration create_users -d sqlite -m src/user/entity/user.model.go --format sql
+  nika g seed initial_users -d sqlite -m src/user/entity/user.model.go`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		rawType := args[0]

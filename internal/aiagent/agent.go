@@ -387,13 +387,15 @@ A module lives in one folder and has a fixed shape:
 
   <src>/<module>/
     <module>.module.go          registers controllers and providers
-    schema/<module>.model.go            the persistence model
-    schema/<module>.repository.go       repository implementation
-    schema/<module>.repository.interface.go
+    <pkg>/<module>.model.go             the persistence model
+    <pkg>/<module>.repository.go        repository implementation
+    <pkg>/<module>.repository.interface.go
     dto/create.dto.go, update.dto.go, findone.dto.go, find.dto.go
     controllers/<module>.controller.go  plus create.go, find.go, find-one.go, update.go, delete.go
     services/<module>.service.go        plus one file per CRUD method
     response/<module>.response.go, <module>.mapper.go
+
+<pkg> is "entity" for PostgreSQL, MySQL and SQLite modules, and "schema" for MongoDB modules. The folder and the Go package name are always the same. List the module folder to see which one it uses rather than assuming — modules generated before the rename may still use schema/.
 
 <src> is "src" in a single-app project and "apps/<app>/src" in a microservice workspace. Import paths always mirror the folder path: "<module path>/<src>/<module>/dto".
 

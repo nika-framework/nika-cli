@@ -55,8 +55,8 @@ it.
 	out.WriteString(`# Examples
 
 {"tool": "project_info", "arguments": {}}
-{"tool": "read_file", "arguments": {"path": "src/user/schema/user.model.go"}}
-{"tool": "edit_file", "arguments": {"path": "src/user/schema/user.model.go", "old_string": "\tName string ` + "`db:\\\"name\\\"`" + `", "new_string": "\tName string ` + "`db:\\\"name\\\"`" + `\n\tAge int ` + "`db:\\\"age\\\"`" + `"}}
+{"tool": "read_file", "arguments": {"path": "src/user/entity/user.model.go"}}
+{"tool": "edit_file", "arguments": {"path": "src/user/entity/user.model.go", "old_string": "\tName string ` + "`db:\\\"name\\\"`" + `", "new_string": "\tName string ` + "`db:\\\"name\\\"`" + `\n\tAge int ` + "`db:\\\"age\\\"`" + `"}}
 {"answer": "Added an Age field to the User model and rebuilt the project."}
 `)
 	return out.String()
